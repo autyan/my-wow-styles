@@ -58,7 +58,9 @@
     {
       "name": "Questie",
       "role": "quest-helper",
-      "required": false
+      "required": false,
+      "version": "v11.29.3",
+      "source": "https://github.com/Questie/Questie/releases/tag/v11.29.3"
     },
     {
       "name": "BetterBlizzStats",
@@ -104,13 +106,6 @@
       "required": false
     },
     {
-      "name": "HidingBar",
-      "role": "minimap-button-panel",
-      "required": false,
-      "enabled": false,
-      "note": "Installed but disabled while using MinimapButtonCollector as the minimap-attached button panel."
-    },
-    {
       "name": "MinimapButtonCollector",
       "role": "minimap-attached-button-panel",
       "required": false
@@ -118,11 +113,6 @@
     {
       "name": "AtlasLootClassic",
       "role": "loot-browser",
-      "required": false
-    },
-    {
-      "name": "Feed_Me",
-      "role": "hunter-pet-feeding",
       "required": false
     },
     {

@@ -71,15 +71,15 @@ Current selected responsibilities:
 - `Details` + `Details_TinyThreat`: damage and threat.
 - `MinimapButtonCollector`: minimap button collector.
 - `AtlasLootClassic`: loot/source browser.
-- `Feed_Me`: hunter pet feeding helper.
 - `TrinketMenu`: trinket management.
 - `Dejunk`: auto-sell workflow.
 
 `Raven` is installed but disabled. Keep it disabled while using the lighter
 OmniCC + ClassicAuraDurations + AutyanCore path.
 
-`HidingBar` is installed but disabled. Current preference is
-`MinimapButtonCollector`.
+`HidingBar` and `Feed_Me` have been removed. Current preference is
+`MinimapButtonCollector` for minimap button collection and Venari's own pet
+feeding logic for hunter pet food.
 
 ## AutyanCore
 
@@ -198,8 +198,8 @@ Important behavior:
   spell IDs.
 - Clickable spell buttons currently use conservative secure macro attributes
   (`type1=macro`, `macrotext1=/cast <localized spell>`) rather than direct
-  `type=spell`, matching the more reliable pattern used by simple mature
-  helper buttons such as Feed_Me.
+  `type=spell`, matching the reliable pattern used by simple mature helper
+  buttons.
 - `/ah diag` prints secure button state and key attributes for debugging
   clickability issues in-game.
 - `/ah clickdebug on` enables button `PostClick` messages so we can distinguish
@@ -242,13 +242,10 @@ Important behavior:
   dropping two buttons into a second row unless the overall sphere geometry is
   redesigned.
 - Upper care bar:
-  - Pet food button left click uses a secure macro. If `Feed_Me` is loaded,
-    AutyanHunter asks its runtime object to prepare the best-food macro and
-    mirrors that macro onto the AutyanHunter button without copying Feed_Me
-    source code. The button icon and tooltip use the selected food when
-    available. The button shows the selected food count through a
-    `NumberFontNormalSmall` overlay string in a high-level count frame above
-    cooldown.
+  - Pet food button left click uses Venari's own secure macro and selected-food
+    logic. The button icon and tooltip use the selected food when available.
+    The button shows the selected food count through a `NumberFontNormalSmall`
+    overlay string in a high-level count frame above cooldown.
   - Bandage button left click uses the best available bandage on the player;
     right click uses the same bandage on the live pet. The button icon, tooltip,
     overlay count, cooldown, and desaturation reflect the selected bandage. The
@@ -345,7 +342,8 @@ Candidate mature logic references to inspect later:
 - `WeaponSwingTimer` for auto-shot/swing timing.
 - `FloAspectBar Classic` for aspect button logic. It reportedly supports TBC
   Anniversary interface `20505`; verify before installing.
-- Existing `Feed_Me` for pet-feeding behavior.
+- Mature hunter helper addons for behavior references only; Venari owns pet
+  feeding behavior now.
 
 ## Operational Notes
 

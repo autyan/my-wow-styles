@@ -1,0 +1,11 @@
+{
+  "versionKey": "tbc-anniversary-cn",
+  "displayName": "WoW China TBC Anniversary",
+  "wowInterface": 20505,
+  "status": "active",
+  "supportedProfiles": [
+    "autyan-hunter"
+  ],
+  "defaultLayout": "layouts/autyan-hunter.v1.json"
+}
+

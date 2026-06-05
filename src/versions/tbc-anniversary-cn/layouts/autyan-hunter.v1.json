@@ -1,0 +1,163 @@
+{
+  "layoutKey": "autyan-hunter",
+  "version": 1,
+  "canvas": {
+    "width": 1920,
+    "height": 1080,
+    "origin": "BOTTOMLEFT"
+  },
+  "principles": [
+    "Reserve left-middle area for future healer raid frames.",
+    "Keep hunter player and pet controls in the lower center-left combat group.",
+    "Keep target and focus information in the lower center-right target group.",
+    "Move utility action buttons to the upper-right near minimap and quest tracker.",
+    "Keep quest tracking on the right edge.",
+    "Reserve lower-right for threat and damage meters."
+  ],
+  "zones": {
+    "chat": {
+      "x": 28,
+      "y": 46,
+      "w": 520,
+      "h": 250,
+      "anchor": "BOTTOMLEFT"
+    },
+    "raidReserved": {
+      "x": 28,
+      "y": 320,
+      "w": 420,
+      "h": 520,
+      "anchor": "BOTTOMLEFT"
+    },
+    "playerCombat": {
+      "x": 760,
+      "y": 80,
+      "w": 560,
+      "h": 250,
+      "anchor": "BOTTOMLEFT"
+    },
+    "targetCombat": {
+      "x": 1060,
+      "y": 210,
+      "w": 420,
+      "h": 150,
+      "anchor": "BOTTOMLEFT"
+    },
+    "utilityTopRight": {
+      "x": 1450,
+      "y": 700,
+      "w": 300,
+      "h": 190,
+      "anchor": "TOPRIGHT"
+    },
+    "questTracker": {
+      "x": 1540,
+      "y": 520,
+      "w": 330,
+      "h": 300,
+      "anchor": "TOPRIGHT"
+    },
+    "meters": {
+      "x": 1480,
+      "y": 60,
+      "w": 360,
+      "h": 250,
+      "anchor": "BOTTOMRIGHT"
+    }
+  },
+  "frames": {
+    "player": {
+      "zone": "playerCombat",
+      "x": 760,
+      "y": 220,
+      "w": 190,
+      "h": 40,
+      "anchor": "BOTTOMLEFT"
+    },
+    "pet": {
+      "zone": "playerCombat",
+      "x": 610,
+      "y": 224,
+      "w": 135,
+      "h": 24,
+      "anchor": "BOTTOMLEFT"
+    },
+    "target": {
+      "zone": "targetCombat",
+      "x": 1040,
+      "y": 220,
+      "w": 190,
+      "h": 40,
+      "anchor": "BOTTOMLEFT"
+    },
+    "targettarget": {
+      "zone": "targetCombat",
+      "x": 1040,
+      "y": 188,
+      "w": 150,
+      "h": 28,
+      "anchor": "BOTTOMLEFT"
+    },
+    "focus": {
+      "zone": "targetCombat",
+      "x": 1040,
+      "y": 266,
+      "w": 160,
+      "h": 30,
+      "anchor": "BOTTOMLEFT"
+    }
+  },
+  "actionBars": {
+    "primary": {
+      "addon": "Bartender4",
+      "bar": 1,
+      "x": 760,
+      "y": 80,
+      "buttons": 12,
+      "rows": 1,
+      "scale": 1,
+      "anchor": "BOTTOMLEFT"
+    },
+    "secondary": {
+      "addon": "Bartender4",
+      "bar": 2,
+      "x": 760,
+      "y": 126,
+      "buttons": 12,
+      "rows": 1,
+      "scale": 1,
+      "anchor": "BOTTOMLEFT"
+    },
+    "petActions": {
+      "addon": "Bartender4",
+      "bar": "pet",
+      "x": 760,
+      "y": 176,
+      "buttons": 10,
+      "rows": 1,
+      "scale": 0.72,
+      "anchor": "BOTTOMLEFT"
+    },
+    "utilityA": {
+      "addon": "Bartender4",
+      "bar": 3,
+      "x": 1490,
+      "y": 760,
+      "buttons": 12,
+      "rows": 2,
+      "scale": 0.9,
+      "anchor": "TOPRIGHT"
+    },
+    "utilityB": {
+      "addon": "Bartender4",
+      "bar": 4,
+      "x": 1490,
+      "y": 668,
+      "buttons": 12,
+      "rows": 2,
+      "scale": 0.9,
+      "anchor": "TOPRIGHT"
+    }
+  }
+}
+

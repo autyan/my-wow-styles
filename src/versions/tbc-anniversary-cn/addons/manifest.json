@@ -1,0 +1,142 @@
+{
+  "versionKey": "tbc-anniversary-cn",
+  "addons": [
+    {
+      "name": "AutyanCore",
+      "role": "project-core-ui-patches",
+      "required": true,
+      "note": "Tiny local addon for persistent buff N/A labels, FPS anchoring, class-colored chat/guild names, and manual BigFoot world channel join commands."
+    },
+    {
+      "name": "Venari",
+      "role": "hunter-helper-hud",
+      "required": false,
+      "version": "0.4.12",
+      "source": "https://github.com/autyan/venari-wow-plugin",
+      "note": "External hunter HUD addon. This repository stores the release artifact only; source development happens in venari-wow-plugin."
+    },
+    {
+      "name": "Parrot",
+      "role": "combat-feedback",
+      "required": true
+    },
+    {
+      "name": "Bartender4",
+      "role": "action-bars",
+      "required": true
+    },
+    {
+      "name": "Masque",
+      "role": "button-skinning",
+      "required": true
+    },
+    {
+      "name": "ShadowedUnitFrames",
+      "role": "unit-frames",
+      "required": true
+    },
+    {
+      "name": "Bagnon",
+      "role": "bags",
+      "required": true
+    },
+    {
+      "name": "DBM-Core",
+      "role": "encounter-alerts",
+      "required": true
+    },
+    {
+      "name": "BlizzMove",
+      "role": "movable-windows",
+      "required": true
+    },
+    {
+      "name": "Skinner",
+      "role": "window-skinning",
+      "required": true
+    },
+    {
+      "name": "Questie",
+      "role": "quest-helper",
+      "required": false
+    },
+    {
+      "name": "BetterBlizzStats",
+      "role": "gear-stats",
+      "required": false
+    },
+    {
+      "name": "ClassicItemBorders",
+      "role": "item-quality-borders",
+      "required": false
+    },
+    {
+      "name": "VendorPrice",
+      "role": "item-sell-price-tooltip",
+      "required": false,
+      "note": "Shows vendor sell prices in item tooltips; also feeds AtlasLootClassic source tooltips when available."
+    },
+    {
+      "name": "Raven",
+      "role": "buff-debuff-timers",
+      "required": false,
+      "enabled": false,
+      "note": "Installed but disabled while using the lighter OmniCC + ClassicAuraDurations path."
+    },
+    {
+      "name": "OmniCC",
+      "role": "cooldown-text",
+      "required": false
+    },
+    {
+      "name": "ClassicAuraDurations",
+      "role": "classic-aura-durations",
+      "required": false
+    },
+    {
+      "name": "Details",
+      "role": "damage-meter",
+      "required": false
+    },
+    {
+      "name": "Details_TinyThreat",
+      "role": "threat-meter",
+      "required": false
+    },
+    {
+      "name": "HidingBar",
+      "role": "minimap-button-panel",
+      "required": false,
+      "enabled": false,
+      "note": "Installed but disabled while using MinimapButtonCollector as the minimap-attached button panel."
+    },
+    {
+      "name": "MinimapButtonCollector",
+      "role": "minimap-attached-button-panel",
+      "required": false
+    },
+    {
+      "name": "AtlasLootClassic",
+      "role": "loot-browser",
+      "required": false
+    },
+    {
+      "name": "Feed_Me",
+      "role": "hunter-pet-feeding",
+      "required": false
+    },
+    {
+      "name": "TrinketMenu",
+      "role": "trinket-management",
+      "required": false,
+      "source": "https://github.com/Resike/TrinketMenu/releases/tag/12.0.5",
+      "version": "12.0.5",
+      "note": "Lightweight two-slot trinket manager; TOC includes interface 20505 for TBC Anniversary."
+    },
+    {
+      "name": "Dejunk",
+      "role": "auto-sell-junk",
+      "required": false
+    }
+  ]
+}

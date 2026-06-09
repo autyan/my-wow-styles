@@ -533,6 +533,13 @@ local function invitePlayerToGuild(name)
   end
 end
 
+local function guildInviteMenuText()
+  if CHAT_INVITE_SEND and CHAT_MSG_GUILD then
+    return CHAT_INVITE_SEND .. CHAT_MSG_GUILD
+  end
+  return GUILD_INVITE or "Guild Invite"
+end
+
 local function addModernUnitMenuButtons(owner, rootDescription, contextData)
   local name = unitPopupTargetName(contextData)
   if not name then
@@ -543,7 +550,7 @@ local function addModernUnitMenuButtons(owner, rootDescription, contextData)
   rootDescription:CreateButton(ADD_FRIEND or "Add Friend", function()
     addPlayerFriend(name)
   end)
-  rootDescription:CreateButton(GUILD_INVITE or "Guild Invite", function()
+  rootDescription:CreateButton(guildInviteMenuText(), function()
     invitePlayerToGuild(name)
   end)
 end
@@ -573,7 +580,7 @@ end
 local function extendPlayerNameMenus()
   if UnitPopupButtons then
     UnitPopupButtons.ADD_FRIEND = UnitPopupButtons.ADD_FRIEND or { text = ADD_FRIEND or "Add Friend", dist = 0 }
-    UnitPopupButtons.GUILD_INVITE = UnitPopupButtons.GUILD_INVITE or { text = GUILD_INVITE or "Guild Invite", dist = 0 }
+    UnitPopupButtons.GUILD_INVITE = UnitPopupButtons.GUILD_INVITE or { text = guildInviteMenuText(), dist = 0 }
   end
 
   extendModernPlayerNameMenus()

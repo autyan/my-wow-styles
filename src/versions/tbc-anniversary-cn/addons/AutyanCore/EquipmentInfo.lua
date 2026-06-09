@@ -355,8 +355,9 @@ local function getTalentTabCount()
 end
 
 local function getTalentTabPoints(tabIndex)
-  local name, _, points = GetTalentTabInfo(tabIndex, false, false)
-  points = tonumber(points) or 0
+  local value1, value2, value3, _, value5 = GetTalentTabInfo(tabIndex, false, false)
+  local name = type(value1) == "string" and value1 or type(value2) == "string" and value2 or nil
+  local points = tonumber(value3) or tonumber(value5) or 0
   if points > 0 or not GetNumTalents or not GetTalentInfo then
     return name, points
   end

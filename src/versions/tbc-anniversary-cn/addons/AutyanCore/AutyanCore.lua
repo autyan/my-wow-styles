@@ -351,6 +351,31 @@ local function classColorByFile(classFile)
   return 1, 1, 1
 end
 
+local function classFileByLocalizedName(className)
+  if not className then
+    return nil
+  end
+
+  for classFile, localized in pairs(LOCALIZED_CLASS_NAMES_MALE or {}) do
+    if localized == className then
+      return classFile
+    end
+  end
+  for classFile, localized in pairs(LOCALIZED_CLASS_NAMES_FEMALE or {}) do
+    if localized == className then
+      return classFile
+    end
+  end
+  return nil
+end
+
+local function setFontStringClassColor(fontString, classFile)
+  if not fontString or not classFile then
+    return
+  end
+  fontString:SetTextColor(classColorByFile(classFile))
+end
+
 local function updateGuildRosterColors()
   if not db().guildClassColors then
     return
@@ -366,11 +391,131 @@ local function updateGuildRosterColors()
     local index = offset + row
     local button = _G["GuildFrameButton" .. row] or _G["GuildFrameGuildStatusButton" .. row]
     local nameText = _G["GuildFrameButton" .. row .. "Name"] or _G["GuildFrameGuildStatusButton" .. row .. "Name"]
+    local classText = _G["GuildFrameButton" .. row .. "Class"] or _G["GuildFrameGuildStatusButton" .. row .. "Class"]
 
     if button and button:IsShown() and nameText and GetGuildRosterInfo then
-      local _, _, _, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(index)
-      nameText:SetTextColor(classColorByFile(classFile))
+      local _, _, _, _, class, _, _, _, _, _, classFile = GetGuildRosterInfo(index)
+      classFile = classFile or classFileByLocalizedName(class)
+      setFontStringClassColor(nameText, classFile)
+      setFontStringClassColor(classText, classFile)
     end
+  end
+end
+
+local function friendInfoByIndex(index)
+  if C_FriendList and C_FriendList.GetFriendInfoByIndex then
+    local info = C_FriendList.GetFriendInfoByIndex(index)
+    if info then
+      return info.name, info.className, info.classFile
+    end
+  end
+  if GetFriendInfo then
+    local name, _, className = GetFriendInfo(index)
+    return name, className, classFileByLocalizedName(className)
+  end
+  return nil, nil, nil
+end
+
+local function updateFriendListColors()
+  if not db().guildClassColors then
+    return
+  end
+
+  local offset = 0
+  if FauxScrollFrame_GetOffset and FriendsFrameFriendsScrollFrame then
+    offset = FauxScrollFrame_GetOffset(FriendsFrameFriendsScrollFrame)
+  end
+  local visibleRows = FRIENDS_TO_DISPLAY or 20
+
+  for row = 1, visibleRows do
+    local index = offset + row
+    local button = _G["FriendsFrameFriendsScrollFrameButton" .. row]
+    local nameText = _G["FriendsFrameFriendsScrollFrameButton" .. row .. "Name"]
+      or _G["FriendsFrameFriendsScrollFrameButton" .. row .. "ButtonTextName"]
+    local classText = _G["FriendsFrameFriendsScrollFrameButton" .. row .. "Class"]
+
+    if button and button:IsShown() then
+      local _, className, classFile = friendInfoByIndex(index)
+      classFile = classFile or classFileByLocalizedName(className)
+      setFontStringClassColor(nameText, classFile)
+      setFontStringClassColor(classText, classFile)
+    end
+  end
+end
+
+local function updateWhoListColors()
+  if not db().guildClassColors then
+    return
+  end
+
+  local offset = 0
+  if FauxScrollFrame_GetOffset and WhoListScrollFrame then
+    offset = FauxScrollFrame_GetOffset(WhoListScrollFrame)
+  end
+  local visibleRows = WHOS_TO_DISPLAY or 17
+
+  for row = 1, visibleRows do
+    local index = offset + row
+    local button = _G["WhoFrameButton" .. row]
+    local nameText = _G["WhoFrameButton" .. row .. "Name"]
+    local classText = _G["WhoFrameButton" .. row .. "Class"]
+
+    if button and button:IsShown() and GetWhoInfo then
+      local _, _, _, _, className, _, classFile = GetWhoInfo(index)
+      classFile = classFile or classFileByLocalizedName(className)
+      setFontStringClassColor(nameText, classFile)
+      setFontStringClassColor(classText, classFile)
+    end
+  end
+end
+
+local function updateSocialClassColors()
+  updateGuildRosterColors()
+  updateFriendListColors()
+  updateWhoListColors()
+end
+
+local function insertUnitPopupButton(menuName, buttonName, beforeButtonName)
+  if not UnitPopupMenus or not UnitPopupButtons or not UnitPopupMenus[menuName] or not UnitPopupButtons[buttonName] then
+    return
+  end
+
+  local menu = UnitPopupMenus[menuName]
+  for _, existing in ipairs(menu) do
+    if existing == buttonName then
+      return
+    end
+  end
+
+  local insertIndex = #menu + 1
+  for index, existing in ipairs(menu) do
+    if existing == beforeButtonName or existing == "CANCEL" then
+      insertIndex = index
+      break
+    end
+  end
+  table.insert(menu, insertIndex, buttonName)
+end
+
+local function extendPlayerNameMenus()
+  if UnitPopupButtons then
+    UnitPopupButtons.ADD_FRIEND = UnitPopupButtons.ADD_FRIEND or { text = ADD_FRIEND or "Add Friend", dist = 0 }
+    UnitPopupButtons.GUILD_INVITE = UnitPopupButtons.GUILD_INVITE or { text = GUILD_INVITE or "Guild Invite", dist = 0 }
+  end
+
+  local menus = {
+    "PLAYER",
+    "PARTY",
+    "RAID_PLAYER",
+    "RAID",
+    "FRIEND",
+    "CHAT_ROSTER",
+    "TARGET",
+  }
+
+  for _, menuName in ipairs(menus) do
+    insertUnitPopupButton(menuName, "ADD_FRIEND", "IGNORE")
+    insertUnitPopupButton(menuName, "GUILD_INVITE", "IGNORE")
   end
 end
 
@@ -451,27 +596,65 @@ local function printTaintEvents()
   end
 end
 
+local socialHooksInstalled = {}
+local function installSocialClassColorHooks()
+  if not hooksecurefunc then
+    return
+  end
+
+  local function hookUpdate(functionName)
+    if _G[functionName] and not socialHooksInstalled[functionName] then
+      hooksecurefunc(functionName, updateSocialClassColors)
+      socialHooksInstalled[functionName] = true
+    end
+  end
+
+  hookUpdate("GuildFrame_Update")
+  hookUpdate("GuildStatus_Update")
+  hookUpdate("FriendsFrame_UpdateFriends")
+  hookUpdate("FriendsFrame_Update")
+  hookUpdate("WhoList_Update")
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
+events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("UNIT_AURA")
 events:RegisterEvent("GUILD_ROSTER_UPDATE")
+events:RegisterEvent("FRIENDLIST_UPDATE")
+events:RegisterEvent("WHO_LIST_UPDATE")
 events:RegisterEvent("ADDON_ACTION_BLOCKED")
 events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 events:SetScript("OnEvent", function(_, event, ...)
-  if event == "PLAYER_LOGIN" then
+  if event == "ADDON_LOADED" then
+    local addon = ...
+    if addon == "Blizzard_FriendsFrame" or addon == "Blizzard_GuildUI" or addon == "Blizzard_WhoUI" then
+      installSocialClassColorHooks()
+      after(0, updateSocialClassColors)
+    end
+  elseif event == "PLAYER_LOGIN" then
     db()
     migrateRiskyDefaults()
     applyChatClassColors()
+    extendPlayerNameMenus()
+    installSocialClassColorHooks()
     after(0.5, applyFPSPosition)
     after(0.5, applyPlayerCastBarVisibility)
     after(1, hookPermanentAuraButtons)
+    after(1, updateSocialClassColors)
+    after(1, installSocialClassColorHooks)
+    after(2, extendPlayerNameMenus)
     after(2, function() joinBigFootChannel() end)
     after(2, updatePermanentAuraText)
   elseif event == "PLAYER_ENTERING_WORLD" then
+    extendPlayerNameMenus()
+    installSocialClassColorHooks()
     after(0.5, applyFPSPosition)
     after(0.5, applyPlayerCastBarVisibility)
     after(1, hookPermanentAuraButtons)
+    after(1, updateSocialClassColors)
+    after(1, installSocialClassColorHooks)
     after(2, function() joinBigFootChannel() end)
     after(2, updatePermanentAuraText)
   elseif event == "UNIT_AURA" then
@@ -481,21 +664,16 @@ events:SetScript("OnEvent", function(_, event, ...)
       requestPermanentAuraTextUpdate()
     end
   elseif event == "GUILD_ROSTER_UPDATE" then
-    after(0, updateGuildRosterColors)
+    after(0, updateSocialClassColors)
+  elseif event == "FRIENDLIST_UPDATE" or event == "WHO_LIST_UPDATE" then
+    after(0, updateSocialClassColors)
   elseif event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
     local addon, action = ...
     recordTaintEvent(event, addon, action)
   end
 end)
 
-if hooksecurefunc then
-  if GuildFrame_Update then
-    hooksecurefunc("GuildFrame_Update", updateGuildRosterColors)
-  end
-  if GuildStatus_Update then
-    hooksecurefunc("GuildStatus_Update", updateGuildRosterColors)
-  end
-end
+installSocialClassColorHooks()
 
 SLASH_AUTYANCORE1 = "/autyan"
 local function handleAutyanCommand(input)

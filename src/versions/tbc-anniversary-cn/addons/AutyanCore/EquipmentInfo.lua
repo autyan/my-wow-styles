@@ -313,23 +313,29 @@ local function convertedRatingValue(rawValue, unit, ratingType)
   return rawValue / perUnit
 end
 
+local function signedStatText(value, suffix)
+  value = value or 0
+  local sign = value >= 0 and "+" or ""
+  return sign .. tostring(value) .. (suffix or "")
+end
+
 local function formatConvertedStat(totalStats, key, profile, unit)
   local rawValue = statValue(totalStats, key)
   local ratingType = profile.rating and profile.rating[key]
   if not ratingType then
-    return tostring(rawValue)
+    return signedStatText(rawValue)
   end
 
   local converted = convertedRatingValue(rawValue, unit, ratingType)
   if not converted then
-    return tostring(rawValue)
+    return signedStatText(rawValue)
   end
 
   if ratingType == "expertise" or ratingType == "defense" then
-    return ("%.2f"):format(converted)
+    return ("%+.2f"):format(converted)
   end
 
-  return ("%.2f%%"):format(converted)
+  return ("%+.2f%%"):format(converted)
 end
 
 local function ensureTalentApi()

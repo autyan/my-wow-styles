@@ -2,7 +2,7 @@
 ## Title: Autyan Core
 ## Notes: Small project-specific UI fixes for Autyan's TBC Anniversary addon pack.
 ## Author: Autyan
-## Version: 0.1.17
+## Version: 0.1.18
 ## SavedVariables: AutyanCoreDB
 
 AutyanCore.lua

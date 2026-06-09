@@ -497,11 +497,86 @@ local function insertUnitPopupButton(menuName, buttonName, beforeButtonName)
   table.insert(menu, insertIndex, buttonName)
 end
 
+local modernUnitMenusExtended = {}
+local function unitPopupTargetName(contextData)
+  if not contextData then
+    return nil
+  end
+  if contextData.name and contextData.name ~= "" then
+    return contextData.name
+  end
+  if contextData.unit and UnitExists and UnitExists(contextData.unit) then
+    return UnitName(contextData.unit)
+  end
+  return nil
+end
+
+local function addPlayerFriend(name)
+  if not name or name == "" then
+    return
+  end
+  if C_FriendList and C_FriendList.AddFriend then
+    C_FriendList.AddFriend(name)
+  elseif AddFriend then
+    AddFriend(name)
+  end
+end
+
+local function invitePlayerToGuild(name)
+  if not name or name == "" then
+    return
+  end
+  if C_GuildInfo and C_GuildInfo.Invite then
+    C_GuildInfo.Invite(name)
+  elseif GuildInvite then
+    GuildInvite(name)
+  end
+end
+
+local function addModernUnitMenuButtons(owner, rootDescription, contextData)
+  local name = unitPopupTargetName(contextData)
+  if not name then
+    return
+  end
+
+  rootDescription:CreateDivider()
+  rootDescription:CreateButton(ADD_FRIEND or "Add Friend", function()
+    addPlayerFriend(name)
+  end)
+  rootDescription:CreateButton(GUILD_INVITE or "Guild Invite", function()
+    invitePlayerToGuild(name)
+  end)
+end
+
+local function extendModernPlayerNameMenus()
+  if not Menu or not Menu.ModifyMenu then
+    return
+  end
+
+  local menus = {
+    "MENU_UNIT_PLAYER",
+    "MENU_UNIT_FRIEND",
+    "MENU_UNIT_PARTY",
+    "MENU_UNIT_RAID_PLAYER",
+    "MENU_UNIT_TARGET",
+    "MENU_UNIT_COMMUNITIES_MEMBER",
+  }
+
+  for _, menuName in ipairs(menus) do
+    if not modernUnitMenusExtended[menuName] then
+      Menu.ModifyMenu(menuName, addModernUnitMenuButtons)
+      modernUnitMenusExtended[menuName] = true
+    end
+  end
+end
+
 local function extendPlayerNameMenus()
   if UnitPopupButtons then
     UnitPopupButtons.ADD_FRIEND = UnitPopupButtons.ADD_FRIEND or { text = ADD_FRIEND or "Add Friend", dist = 0 }
     UnitPopupButtons.GUILD_INVITE = UnitPopupButtons.GUILD_INVITE or { text = GUILD_INVITE or "Guild Invite", dist = 0 }
   end
+
+  extendModernPlayerNameMenus()
 
   local menus = {
     "PLAYER",

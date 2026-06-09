@@ -174,10 +174,6 @@ local ratingBaseValues = {
   block = 5,
 }
 
-local compactTalentNames = {
-  HUNTER = { "兽王", "射击", "生存" },
-}
-
 local tooltip
 
 local function scanTooltip()
@@ -374,23 +370,17 @@ local function getTalentTabPoints(tabIndex)
   return name, points
 end
 
-local function getCompactTalentName(classFile, talentIndex, fallbackName)
-  local names = classFile and compactTalentNames[classFile]
-  return (names and names[talentIndex]) or fallbackName
-end
-
 local function getPrimaryTalentInfo()
   if not ensureTalentApi() then
     return nil, nil
   end
 
-  local _, classFile = UnitClass("player")
   local bestIndex, bestName, bestPoints = nil, nil, -1
   for index = 1, getTalentTabCount() do
     local name, points = getTalentTabPoints(index)
     if points > bestPoints then
       bestIndex = index
-      bestName = getCompactTalentName(classFile, index, name)
+      bestName = name
       bestPoints = points
     end
   end

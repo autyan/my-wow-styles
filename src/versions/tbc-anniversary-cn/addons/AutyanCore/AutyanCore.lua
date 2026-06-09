@@ -412,11 +412,52 @@ local function joinBigFootChannel(channelName, manual)
   end
 end
 
+local function recordTaintEvent(event, addon, action)
+  local cfg = db()
+  cfg.taintEvents = cfg.taintEvents or {}
+
+  local entry = {
+    time = date and date("%Y-%m-%d %H:%M:%S") or tostring(GetTime and GetTime() or 0),
+    event = tostring(event or "-"),
+    addon = tostring(addon or "unknown"),
+    action = tostring(action or "unknown"),
+  }
+
+  table.insert(cfg.taintEvents, entry)
+  while #cfg.taintEvents > 50 do
+    table.remove(cfg.taintEvents, 1)
+  end
+
+  printMsg(("taint: %s addon=%s action=%s"):format(entry.event, entry.addon, entry.action))
+end
+
+local function printTaintEvents()
+  local entries = db().taintEvents or {}
+  if #entries == 0 then
+    printMsg("taint log is empty")
+    return
+  end
+
+  printMsg(("taint log: %d entries"):format(#entries))
+  for index = math.max(1, #entries - 9), #entries do
+    local entry = entries[index]
+    printMsg(("%02d %s %s addon=%s action=%s"):format(
+      index,
+      tostring(entry.time or "-"),
+      tostring(entry.event or "-"),
+      tostring(entry.addon or "-"),
+      tostring(entry.action or "-")
+    ))
+  end
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("UNIT_AURA")
 events:RegisterEvent("GUILD_ROSTER_UPDATE")
+events:RegisterEvent("ADDON_ACTION_BLOCKED")
+events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 events:SetScript("OnEvent", function(_, event, ...)
   if event == "PLAYER_LOGIN" then
     db()
@@ -441,6 +482,9 @@ events:SetScript("OnEvent", function(_, event, ...)
     end
   elseif event == "GUILD_ROSTER_UPDATE" then
     after(0, updateGuildRosterColors)
+  elseif event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
+    local addon, action = ...
+    recordTaintEvent(event, addon, action)
   end
 end)
 
@@ -526,7 +570,27 @@ local function handleAutyanCommand(input)
     return
   end
 
-  printMsg("commands: /autyan fps, /autyan fps <x> <y>, /autyan buffna on, /autyan buffna off, /autyan buffna debug, /autyan castbar off, /autyan castbar on, /autyan joinbf, /autyan joinbf2")
+  if input == "taint" then
+    printTaintEvents()
+    return
+  end
+
+  if input == "taint clear" then
+    db().taintEvents = {}
+    printMsg("taint log cleared")
+    return
+  end
+
+  if input == "equip debug" then
+    if AutyanCore_EquipmentInfoDebug then
+      AutyanCore_EquipmentInfoDebug()
+    else
+      printMsg("equipment module is not loaded")
+    end
+    return
+  end
+
+  printMsg("commands: /autyan fps, /autyan fps <x> <y>, /autyan buffna on, /autyan buffna off, /autyan buffna debug, /autyan castbar off, /autyan castbar on, /autyan taint, /autyan taint clear, /autyan equip debug, /autyan joinbf, /autyan joinbf2")
 end
 
 SlashCmdList.AUTYANCORE = function(input)

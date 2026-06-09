@@ -98,12 +98,55 @@
     {
       "name": "Details",
       "role": "damage-meter",
-      "required": false
+      "required": false,
+      "version": "Details.20260525.15089.171",
+      "source": "https://addons.wago.io/addons/details-damage-meter-standalone",
+      "note": "Landed from the local WoW AddOns folder; includes TBC Anniversary interface 20505 support."
+    },
+    {
+      "name": "Details_DataStorage",
+      "role": "details-storage-plugin",
+      "required": false,
+      "source": "https://addons.wago.io/addons/details-damage-meter-standalone",
+      "note": "Companion addon shipped with Details."
+    },
+    {
+      "name": "Details_EncounterDetails",
+      "role": "details-encounter-breakdown-plugin",
+      "required": false,
+      "source": "https://addons.wago.io/addons/details-damage-meter-standalone",
+      "note": "Companion addon shipped with Details."
     },
     {
       "name": "Details_TinyThreat",
       "role": "threat-meter",
-      "required": false
+      "required": false,
+      "source": "https://addons.wago.io/addons/details-damage-meter-standalone",
+      "note": "Landed from the local WoW AddOns folder; use as the second Details window for threat."
+    },
+    {
+      "name": "TomTom",
+      "role": "waypoint-navigation",
+      "required": false,
+      "source": "https://www.wowinterface.com/downloads/info7032-TomTom.html",
+      "version": "v4.3.4-release",
+      "note": "Landed from the official WoWInterface download; TBC TOC interface is 20505."
+    },
+    {
+      "name": "Leatrix_Maps",
+      "role": "map-enhancements",
+      "required": false,
+      "source": "https://www.curseforge.com/wow/addons/leatrix-maps",
+      "version": "2.5.24",
+      "note": "Landed from the manually downloaded Leatrix_Maps-2.5.24-bcc.zip; TBC Anniversary TOC interface is 20505."
+    },
+    {
+      "name": "TalentEmuX",
+      "role": "talent-simulator",
+      "required": false,
+      "source": "https://github.com/alexqu0822/TalentEmu",
+      "version": "205r.260507",
+      "note": "Replaces Talented/Talented_Data. Independent alaTalentEmu TBC build with interface 20505 support and spellID-based talent tooltips."
     },
     {
       "name": "MinimapButtonCollector",

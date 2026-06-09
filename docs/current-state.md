@@ -65,14 +65,20 @@ Current selected responsibilities:
 - `BlizzMove`: movable Blizzard windows.
 - `Skinner`: Blizzard window skinning.
 - `Questie`: quest helper.
+- `TomTom`: waypoint arrow/navigation companion for Questie.
+- `Leatrix Maps`: lightweight map enhancement addon.
 - `BetterBlizzStats` + `ClassicItemBorders`: character gear/stats presentation.
 - `VendorPrice`: tooltip sell prices.
 - `OmniCC` + `ClassicAuraDurations`: cooldown and aura duration numbers.
 - `Details` + `Details_TinyThreat`: damage and threat.
+- `Details_DataStorage` + `Details_EncounterDetails`: companion Details
+  addons shipped with the local Details install.
 - `MinimapButtonCollector`: minimap button collector.
 - `AtlasLootClassic`: loot/source browser.
 - `TrinketMenu`: trinket management.
 - `Dejunk`: auto-sell workflow.
+- `TalentEmuX`: in-game talent simulator/replacement talent UI with
+  spellID-based talent tooltips.
 
 `Raven` is installed but disabled. Keep it disabled while using the lighter
 OmniCC + ClassicAuraDurations + AutyanCore path.
@@ -80,6 +86,14 @@ OmniCC + ClassicAuraDurations + AutyanCore path.
 `HidingBar` and `Feed_Me` have been removed. Current preference is
 `MinimapButtonCollector` for minimap button collection and Venari's own pet
 feeding logic for hunter pet food.
+
+`TalentPlanner` was tested and removed from the live AddOns directory. It tracks
+imported point-spend sequences instead of providing a free talent simulator, so
+it does not fit the talent planning requirement.
+
+`Talented` + `Talented_Data` were also removed after local testing. The TBC
+trees could be patched, but Chinese talent tooltips remained unreliable because
+the addon depended on stale localization/static data.
 
 ## AutyanCore
 

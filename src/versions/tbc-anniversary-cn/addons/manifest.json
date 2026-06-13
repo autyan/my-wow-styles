@@ -99,7 +99,7 @@
       "name": "Details",
       "role": "damage-meter",
       "required": false,
-      "version": "Details.20260525.15089.171",
+      "version": "Details.20260603.15101.172",
       "source": "https://addons.wago.io/addons/details-damage-meter-standalone",
       "note": "Landed from the local WoW AddOns folder; includes TBC Anniversary interface 20505 support."
     },

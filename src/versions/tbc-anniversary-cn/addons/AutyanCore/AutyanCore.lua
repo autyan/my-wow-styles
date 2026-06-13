@@ -14,9 +14,7 @@ local defaults = {
   },
   chatClassColors = true,
   guildClassColors = true,
-  hidePlayerCastBar = false,
-  bigFootAutoJoin = false,
-  bigFootChannelBase = "大脚世界频道",
+  taintLogEnabled = true,
 }
 
 local function db()
@@ -69,37 +67,6 @@ local function applyFPSPosition()
 
   frame:ClearAllPoints()
   frame:SetPoint(cfg.point, UIParent, cfg.relativePoint, cfg.x, cfg.y)
-end
-
-local function keepFrameHidden(frame)
-  if not frame then
-    return
-  end
-
-  frame:Hide()
-end
-
-local function applyPlayerCastBarVisibility()
-  if not db().hidePlayerCastBar then
-    return
-  end
-
-  local frames = {
-    _G.CastingBarFrame,
-    _G.PlayerCastingBarFrame,
-    _G.PetCastingBarFrame,
-  }
-
-  for _, frame in ipairs(frames) do
-    if frame then
-      frame:UnregisterAllEvents()
-      frame:Hide()
-      if not frame.AutyanHideCastBarHooked then
-        frame:HookScript("OnShow", keepFrameHidden)
-        frame.AutyanHideCastBarHooked = true
-      end
-    end
-  end
 end
 
 local function ensurePermanentAuraText(button)
@@ -601,44 +568,6 @@ local function extendPlayerNameMenus()
   end
 end
 
-local function nextBigFootChannelName(channelName)
-  local base = db().bigFootChannelBase
-  if not channelName or not channelName:find(base, 1, true) then
-    return base .. "2"
-  end
-
-  local suffix = channelName:match(base .. "(%d+)")
-  return base .. tostring((tonumber(suffix) or 1) + 1)
-end
-
-local function isOnChannel(channelName)
-  local list = { GetChannelList() }
-  for index = 2, #list, 3 do
-    if list[index] == channelName then
-      return true
-    end
-  end
-  return false
-end
-
-local function joinBigFootChannel(channelName, manual)
-  local cfg = db()
-  if not manual and not cfg.bigFootAutoJoin then
-    return
-  end
-  if GetLocale() ~= "zhCN" and GetLocale() ~= "zhTW" then
-    return
-  end
-
-  channelName = channelName or cfg.bigFootChannelBase
-  if GetChannelName(channelName) == 0 and not isOnChannel(channelName) then
-    local ok = pcall(JoinTemporaryChannel, channelName)
-    if not ok then
-      printMsg("failed to join channel: " .. tostring(channelName))
-    end
-  end
-end
-
 local function recordTaintEvent(event, addon, action)
   local cfg = db()
   cfg.taintEvents = cfg.taintEvents or {}
@@ -678,6 +607,292 @@ local function printTaintEvents()
   end
 end
 
+local configUI = {}
+local configDirty
+
+local function inCombat()
+  return InCombatLockdown and InCombatLockdown()
+end
+
+local function setSolidTexture(texture, r, g, b, a)
+  if texture.SetColorTexture then
+    texture:SetColorTexture(r, g, b, a)
+  else
+    texture:SetTexture("Interface\\Buttons\\WHITE8X8")
+    texture:SetVertexColor(r, g, b, a)
+  end
+end
+
+local function clearTaintEvents()
+  db().taintEvents = {}
+end
+
+local function applyConfigChange(callback, combatMessage)
+  callback()
+  if inCombat() then
+    configDirty = true
+    if combatMessage then
+      printMsg(combatMessage)
+    end
+  end
+end
+
+local function setCoreFlag(key, value)
+  local cfg = db()
+  cfg[key] = value and true or false
+
+  if key == "permanentAuraText" then
+    if cfg.permanentAuraText then
+      applyConfigChange(updatePermanentAuraText, "战斗中：已保存，战斗结束后刷新永久光环文本。")
+    else
+      for index = 1, 40 do
+        hidePermanentAuraText(_G["BuffButton" .. index])
+      end
+      hidePermanentAuraContainer(BuffFrame and BuffFrame.AuraContainer)
+      hidePermanentAuraContainer(BuffFrame)
+    end
+  elseif key == "chatClassColors" and cfg.chatClassColors then
+    applyChatClassColors()
+  elseif key == "guildClassColors" and cfg.guildClassColors then
+    updateSocialClassColors()
+  elseif key == "taintLogEnabled" and not cfg.taintLogEnabled then
+    clearTaintEvents()
+  end
+
+  if configUI.refresh then
+    configUI.refresh()
+  end
+end
+
+local function setFPSCoordinate(axis, value)
+  value = tonumber(value)
+  if not value then
+    return
+  end
+
+  local cfg = db().fps
+  cfg[axis] = math.floor(value + (value >= 0 and 0.5 or -0.5))
+  applyConfigChange(applyFPSPosition, "战斗中：已保存，战斗结束后应用 FPS 坐标。")
+  if configUI.refresh then
+    configUI.refresh()
+  end
+end
+
+local function setEquipmentFlag(key, value)
+  applyConfigChange(function()
+    if AutyanCore_SetEquipmentInfoFlag then
+      AutyanCore_SetEquipmentInfoFlag(key, value and true or false)
+    end
+  end, "战斗中：已保存，战斗结束后刷新装备面板。")
+  if configUI.refresh then
+    configUI.refresh()
+  end
+end
+
+local function makeConfigDivider(parent, x, y, width)
+  local line = parent:CreateTexture(nil, "ARTWORK")
+  line:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+  line:SetSize(width, 1)
+  setSolidTexture(line, 0.45, 0.52, 0.58, 0.25)
+  return line
+end
+
+local function makeConfigCheckbox(parent, name, labelText, getter, setter, x, y)
+  local button = CreateFrame("CheckButton", name, parent, "UICheckButtonTemplate")
+  button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+  button:SetSize(24, 24)
+  local label = _G[name .. "Text"]
+  if label then
+    label:SetText(labelText)
+    label:SetTextColor(0.78, 0.86, 0.9, 1)
+  end
+  button.AutyanGetter = getter
+  button:SetScript("OnClick", function(self)
+    setter(self:GetChecked())
+  end)
+  configUI.checkboxes[#configUI.checkboxes + 1] = button
+  return button
+end
+
+local function makeConfigEditBox(parent, name, labelText, getter, setter, x, y)
+  local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y - 4)
+  label:SetSize(52, 18)
+  label:SetJustifyH("LEFT")
+  label:SetText(labelText)
+  label:SetTextColor(0.78, 0.86, 0.9, 1)
+
+  local box = CreateFrame("EditBox", name, parent, "InputBoxTemplate")
+  box:SetPoint("TOPLEFT", parent, "TOPLEFT", x + 54, y)
+  box:SetSize(72, 20)
+  box:SetAutoFocus(false)
+  box:SetNumeric(false)
+  box.AutyanGetter = getter
+  box:SetScript("OnEnterPressed", function(self)
+    setter(self:GetText())
+    self:ClearFocus()
+  end)
+  box:SetScript("OnEditFocusLost", function(self)
+    setter(self:GetText())
+  end)
+  configUI.editBoxes[#configUI.editBoxes + 1] = box
+  return box
+end
+
+local function createConfigFrame()
+  if configUI.frame then
+    return
+  end
+
+  configUI.checkboxes = {}
+  configUI.editBoxes = {}
+
+  local frame = CreateFrame("Frame", "AutyanCoreConfigFrame", UIParent)
+  frame:SetSize(560, 430)
+  frame:SetPoint("CENTER")
+  frame:SetFrameStrata("DIALOG")
+  frame:SetMovable(true)
+  frame:EnableMouse(true)
+  frame:RegisterForDrag("LeftButton")
+  frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+  frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+
+  local bg = frame:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  setSolidTexture(bg, 0.025, 0.028, 0.032, 0.97)
+
+  local header = frame:CreateTexture(nil, "BORDER")
+  header:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
+  header:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1)
+  header:SetSize(1, 54)
+  setSolidTexture(header, 0.06, 0.075, 0.085, 0.88)
+
+  local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  title:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -14)
+  title:SetText("AutyanCore 设置")
+  title:SetTextColor(0.86, 0.94, 1, 1)
+
+  local note = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  note:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -5)
+  note:SetSize(450, 18)
+  note:SetJustifyH("LEFT")
+  note:SetText("战斗中保存配置；受保护或界面刷新相关变更会在脱战后应用。")
+  note:SetTextColor(0.62, 0.68, 0.72, 1)
+
+  local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+  close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
+  close:SetScript("OnClick", function() frame:Hide() end)
+
+  local coreTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  coreTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -76)
+  coreTitle:SetText("核心开关")
+  coreTitle:SetTextColor(0.86, 0.94, 1, 1)
+  makeConfigDivider(frame, 28, -100, 230)
+
+  local equipTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  equipTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, -76)
+  equipTitle:SetText("装备面板")
+  equipTitle:SetTextColor(0.86, 0.94, 1, 1)
+  makeConfigDivider(frame, 300, -100, 230)
+
+  local function coreGetter(key)
+    return function()
+      return db()[key]
+    end
+  end
+  local function equipGetter(key)
+    return function()
+      return AutyanCore_GetEquipmentInfoFlag and AutyanCore_GetEquipmentInfoFlag(key)
+    end
+  end
+
+  makeConfigCheckbox(frame, "AutyanCoreCfgPermanentAuraText", "永久光环 N/A", coreGetter("permanentAuraText"), function(value) setCoreFlag("permanentAuraText", value) end, 28, -114)
+  makeConfigCheckbox(frame, "AutyanCoreCfgFPS", "FPS 坐标启用", function() return db().fps.enabled end, function(value) db().fps.enabled = value and true or false; if value then applyFPSPosition() end; configUI.refresh() end, 28, -146)
+  makeConfigCheckbox(frame, "AutyanCoreCfgChatClass", "聊天职业染色", coreGetter("chatClassColors"), function(value) setCoreFlag("chatClassColors", value) end, 28, -178)
+  makeConfigCheckbox(frame, "AutyanCoreCfgGuildClass", "好友/公会职业染色", coreGetter("guildClassColors"), function(value) setCoreFlag("guildClassColors", value) end, 28, -210)
+  makeConfigCheckbox(frame, "AutyanCoreCfgTaint", "记录 taint 日志", coreGetter("taintLogEnabled"), function(value) setCoreFlag("taintLogEnabled", value) end, 28, -306)
+
+  local fpsTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  fpsTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 30, -346)
+  fpsTitle:SetText("FPS 位置")
+  fpsTitle:SetTextColor(0.86, 0.94, 1, 1)
+  makeConfigEditBox(frame, "AutyanCoreCfgFPSX", "X", function() return db().fps.x end, function(value) setFPSCoordinate("x", value) end, 30, -374)
+  makeConfigEditBox(frame, "AutyanCoreCfgFPSY", "Y", function() return db().fps.y end, function(value) setFPSCoordinate("y", value) end, 158, -374)
+
+  makeConfigCheckbox(frame, "AutyanCoreCfgEquipEnabled", "启用装备信息", equipGetter("enabled"), function(value) setEquipmentFlag("enabled", value) end, 300, -114)
+  makeConfigCheckbox(frame, "AutyanCoreCfgEquipCharacter", "角色面板", equipGetter("characterPanel"), function(value) setEquipmentFlag("characterPanel", value) end, 300, -146)
+  makeConfigCheckbox(frame, "AutyanCoreCfgEquipInspect", "观察面板", equipGetter("inspectPanel"), function(value) setEquipmentFlag("inspectPanel", value) end, 300, -178)
+  makeConfigCheckbox(frame, "AutyanCoreCfgEquipDurability", "耐久百分比", equipGetter("durability"), function(value) setEquipmentFlag("durability", value) end, 300, -210)
+  makeConfigCheckbox(frame, "AutyanCoreCfgEquipQuality", "装备品质边框", equipGetter("qualityBorders"), function(value) setEquipmentFlag("qualityBorders", value) end, 300, -242)
+  makeConfigCheckbox(frame, "AutyanCoreCfgEquipRepair", "维修费用", equipGetter("repairCost"), function(value) setEquipmentFlag("repairCost", value) end, 300, -274)
+
+  local footer = frame:CreateTexture(nil, "BORDER")
+  footer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1)
+  footer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
+  footer:SetSize(1, 43)
+  setSolidTexture(footer, 0.035, 0.04, 0.046, 0.78)
+
+  local status = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  status:SetPoint("LEFT", frame, "BOTTOMLEFT", 18, 22)
+  status:SetSize(340, 18)
+  status:SetJustifyH("LEFT")
+  configUI.status = status
+
+  local clearTaint = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  clearTaint:SetSize(96, 22)
+  clearTaint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -104, 12)
+  clearTaint:SetText("清空 taint")
+  clearTaint:SetScript("OnClick", function()
+    clearTaintEvents()
+    printMsg("taint log cleared")
+    configUI.refresh()
+  end)
+
+  local done = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  done:SetSize(82, 22)
+  done:SetPoint("LEFT", clearTaint, "RIGHT", 8, 0)
+  done:SetText("完成")
+  done:SetScript("OnClick", function() frame:Hide() end)
+
+  frame:Hide()
+  configUI.frame = frame
+end
+
+configUI.refresh = function()
+  if not configUI.frame then
+    return
+  end
+  for _, checkbox in ipairs(configUI.checkboxes or {}) do
+    checkbox:SetChecked(checkbox.AutyanGetter and checkbox.AutyanGetter() and true or false)
+  end
+  for _, box in ipairs(configUI.editBoxes or {}) do
+    if not box:HasFocus() then
+      box:SetText(tostring(box.AutyanGetter and box.AutyanGetter() or ""))
+    end
+  end
+  if configUI.status then
+    if inCombat() then
+      configUI.status:SetText("战斗中：已保存，脱战后应用需要刷新界面的变更。")
+      configUI.status:SetTextColor(0.95, 0.78, 0.42, 1)
+    else
+      local count = #(db().taintEvents or {})
+      configUI.status:SetFormattedText("就绪。taint 日志：%d 条。", count)
+      configUI.status:SetTextColor(0.62, 0.68, 0.72, 1)
+    end
+  end
+end
+
+local function toggleConfigFrame()
+  createConfigFrame()
+  configUI.refresh()
+  if configUI.frame:IsShown() then
+    configUI.frame:Hide()
+  else
+    configUI.frame:Show()
+    configUI.refresh()
+  end
+end
+
 local socialHooksInstalled = {}
 local function installSocialClassColorHooks()
   if not hooksecurefunc then
@@ -706,6 +921,7 @@ events:RegisterEvent("UNIT_AURA")
 events:RegisterEvent("GUILD_ROSTER_UPDATE")
 events:RegisterEvent("FRIENDLIST_UPDATE")
 events:RegisterEvent("WHO_LIST_UPDATE")
+events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:RegisterEvent("ADDON_ACTION_BLOCKED")
 events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 events:SetScript("OnEvent", function(_, event, ...)
@@ -722,22 +938,18 @@ events:SetScript("OnEvent", function(_, event, ...)
     extendPlayerNameMenus()
     installSocialClassColorHooks()
     after(0.5, applyFPSPosition)
-    after(0.5, applyPlayerCastBarVisibility)
     after(1, hookPermanentAuraButtons)
     after(1, updateSocialClassColors)
     after(1, installSocialClassColorHooks)
     after(2, extendPlayerNameMenus)
-    after(2, function() joinBigFootChannel() end)
     after(2, updatePermanentAuraText)
   elseif event == "PLAYER_ENTERING_WORLD" then
     extendPlayerNameMenus()
     installSocialClassColorHooks()
     after(0.5, applyFPSPosition)
-    after(0.5, applyPlayerCastBarVisibility)
     after(1, hookPermanentAuraButtons)
     after(1, updateSocialClassColors)
     after(1, installSocialClassColorHooks)
-    after(2, function() joinBigFootChannel() end)
     after(2, updatePermanentAuraText)
   elseif event == "UNIT_AURA" then
     local unit = ...
@@ -749,9 +961,25 @@ events:SetScript("OnEvent", function(_, event, ...)
     after(0, updateSocialClassColors)
   elseif event == "FRIENDLIST_UPDATE" or event == "WHO_LIST_UPDATE" then
     after(0, updateSocialClassColors)
+  elseif event == "PLAYER_REGEN_ENABLED" then
+    if configDirty then
+      configDirty = nil
+      applyFPSPosition()
+      updatePermanentAuraText()
+      updateSocialClassColors()
+      if AutyanCore_RefreshEquipmentInfo then
+        AutyanCore_RefreshEquipmentInfo()
+      end
+      if configUI.refresh then
+        configUI.refresh()
+      end
+      printMsg("combat ended: pending config changes applied")
+    end
   elseif event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
     local addon, action = ...
-    recordTaintEvent(event, addon, action)
+    if db().taintLogEnabled then
+      recordTaintEvent(event, addon, action)
+    end
   end
 end)
 
@@ -767,6 +995,11 @@ local function handleAutyanCommand(input)
     return
   end
 
+  if input == "config" or input == "options" or input == "设置" then
+    toggleConfigFrame()
+    return
+  end
+
   local x, y = input:match("^fps%s+(-?%d+)%s+(-?%d+)$")
   if x and y then
     local cfg = db().fps
@@ -774,18 +1007,6 @@ local function handleAutyanCommand(input)
     cfg.y = tonumber(y)
     applyFPSPosition()
     printMsg(("FPS anchor updated: %d %d"):format(cfg.x, cfg.y))
-    return
-  end
-
-  if input == "joinbf" then
-    joinBigFootChannel(db().bigFootChannelBase, true)
-    printMsg("joining BigFoot world channel")
-    return
-  end
-
-  if input == "joinbf2" then
-    joinBigFootChannel(nextBigFootChannelName(db().bigFootChannelBase), true)
-    printMsg("joining BigFoot fallback channel")
     return
   end
 
@@ -817,21 +1038,20 @@ local function handleAutyanCommand(input)
     return
   end
 
-  if input == "castbar off" then
-    db().hidePlayerCastBar = true
-    applyPlayerCastBarVisibility()
-    printMsg("Blizzard player cast bar hidden")
-    return
-  end
-
-  if input == "castbar on" then
-    db().hidePlayerCastBar = false
-    printMsg("Blizzard player cast bar hide disabled; reload UI to restore it")
-    return
-  end
-
   if input == "taint" then
     printTaintEvents()
+    return
+  end
+
+  if input == "taint on" then
+    setCoreFlag("taintLogEnabled", true)
+    printMsg("taint log enabled")
+    return
+  end
+
+  if input == "taint off" then
+    setCoreFlag("taintLogEnabled", false)
+    printMsg("taint log disabled and cleared")
     return
   end
 
@@ -850,7 +1070,7 @@ local function handleAutyanCommand(input)
     return
   end
 
-  printMsg("commands: /autyan fps, /autyan fps <x> <y>, /autyan buffna on, /autyan buffna off, /autyan buffna debug, /autyan castbar off, /autyan castbar on, /autyan taint, /autyan taint clear, /autyan equip debug, /autyan joinbf, /autyan joinbf2")
+  printMsg("commands: /autyan config, /autyan fps, /autyan fps <x> <y>, /autyan buffna on, /autyan buffna off, /autyan buffna debug, /autyan taint, /autyan taint on, /autyan taint off, /autyan taint clear, /autyan equip debug")
 end
 
 SlashCmdList.AUTYANCORE = function(input)

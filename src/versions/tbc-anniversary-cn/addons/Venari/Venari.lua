@@ -387,10 +387,13 @@ end
 local function petActionMacro()
   return table.concat({
     "#showtooltip",
-    "/cast [@pet,dead] " .. spellName("revivePet"),
     "/cast [nopet] " .. spellName("callPet"),
     "/cast [@pet,exists,nodead,nocombat] " .. spellName("dismissPet"),
   }, "\n")
+end
+
+local function revivePetMacro()
+  return "#showtooltip\n/cast " .. spellName("revivePet")
 end
 
 local function feedPetMacro()
@@ -1030,8 +1033,11 @@ local function petFoodHappinessGain(petLevel, foodLevel)
   return 0, "too-low"
 end
 
-local function petFoodItemFeedable(dbItem)
+local function petFoodItemFeedable(dbItem, info, foodType)
   if not dbItem then
+    if foodType and isFoodConsumable(info) then
+      return true, "api-food"
+    end
     return false, "unknown-db"
   end
   local flags = dbItem.flags or {}
@@ -1067,7 +1073,8 @@ local function scanPetFoodCandidates(allowedTypes)
           local count = containerItemCount(bag, slot) or itemCount(link) or 0
           local foodLevel = dbItem and dbItem.foodLevel or info.itemLevel
           local happinessGain, happinessTier = petFoodHappinessGain(state.petLevel, foodLevel)
-          local feedable, feedableReason = petFoodItemFeedable(dbItem)
+          local feedable, feedableReason = petFoodItemFeedable(dbItem, info, normalized)
+          local apiPrepared = not dbItem and feedable and isFoodConsumable(info) and true or false
           candidates[#candidates + 1] = {
             bag = bag,
             slot = slot,
@@ -1089,7 +1096,7 @@ local function scanPetFoodCandidates(allowedTypes)
             feedable = feedable,
             feedableReason = feedableReason,
             raw = dbFoodFlag(dbItem, "raw"),
-            prepared = dbFoodFlag(dbItem, "prepared"),
+            prepared = dbFoodFlag(dbItem, "prepared") or apiPrepared,
             cookable = dbFoodFlag(dbItem, "cookable"),
             matchesPet = normalized and allowed[normalized] and happinessTier ~= "too-low" and feedable or false,
           }
@@ -1794,11 +1801,11 @@ local function handleCombatLog()
 end
 
 local function petOrbTexture()
-  if not state.petExists then
-    return MEDIA .. "orb-nopet"
-  end
   if state.petDead then
     return MEDIA .. "orb-dead"
+  end
+  if not state.petExists then
+    return MEDIA .. "orb-nopet"
   end
   if state.petHappiness == 1 then
     return MEDIA .. "orb-unhappy"
@@ -1810,11 +1817,11 @@ local function petOrbTexture()
 end
 
 local function petStatusText()
-  if not state.petExists then
-    return L("pet.noPet")
-  end
   if state.petDead then
     return L("pet.dead")
+  end
+  if not state.petExists then
+    return L("pet.noPet")
   end
   if state.petHappiness == 1 then
     return L("pet.unhappy")
@@ -2621,9 +2628,11 @@ local function makeCenterButton(parent)
   button:SetAttribute("macrotext1", petInfoMacro())
   button:SetAttribute("type2", "macro")
   button:SetAttribute("macrotext2", petActionMacro())
+  button:SetAttribute("ctrl-type2", "macro")
+  button:SetAttribute("ctrl-macrotext2", revivePetMacro())
   button.VenariPostClick = function(_, mouseButton)
     if mouseButton == "RightButton" and schedulePetRefresh then
-      if state.petExists and state.petDead then
+      if IsControlKeyDown and IsControlKeyDown() then
         state.petRevivePending = true
         setPetReviveDeadGuard(0.5)
       end

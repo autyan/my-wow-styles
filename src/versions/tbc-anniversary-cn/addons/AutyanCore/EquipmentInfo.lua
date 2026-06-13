@@ -175,6 +175,8 @@ local ratingBaseValues = {
 }
 
 local tooltip
+local equipmentJobs = {}
+local equipmentJobActive = {}
 
 local function scanTooltip()
   if not tooltip then
@@ -267,6 +269,23 @@ local function addStats(totalStats, link)
 
   for stat, value in pairs(stats) do
     totalStats[stat] = (totalStats[stat] or 0) + value
+  end
+end
+
+local function itemIdFromLink(link)
+  return link and tonumber(link:match("item:(%d+)"))
+end
+
+local function requestItemData(link)
+  local itemId = itemIdFromLink(link)
+  if not itemId or not C_Item then
+    return
+  end
+
+  if C_Item.RequestLoadItemDataByID then
+    pcall(C_Item.RequestLoadItemDataByID, itemId)
+  elseif C_Item.RequestLoadItemData then
+    pcall(C_Item.RequestLoadItemData, itemId)
   end
 end
 
@@ -674,7 +693,7 @@ local function createEquipmentPanel(parent)
   return frame
 end
 
-local function positionEquipmentPanel(panel, parent)
+local function positionEquipmentPanel(panel, parent, showStats)
   if not panel or not parent then
     return
   end
@@ -687,21 +706,21 @@ local function positionEquipmentPanel(panel, parent)
   local uiWidth = UIParent and UIParent:GetWidth()
   local parentRight = parent.GetRight and parent:GetRight()
   local panelWidth = panel:GetWidth() or 220
-  local statsWidth = panel.statsPanel and panel.statsPanel:GetWidth() or 0
+  local statsWidth = showStats and panel.statsPanel and panel.statsPanel:GetWidth() or 0
   if uiWidth and parentRight and parentRight + panelWidth + statsWidth + 12 > uiWidth then
     panel:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -16, -78)
-    if panel.statsPanel then
+    if showStats and panel.statsPanel then
       panel.statsPanel:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -2)
     end
   else
     panel:SetPoint("TOPLEFT", parent, "TOPRIGHT", 0, 0)
-    if panel.statsPanel then
+    if showStats and panel.statsPanel then
       panel.statsPanel:SetPoint("TOPLEFT", panel, "TOPRIGHT", 0, -1)
     end
   end
 end
 
-local function updateEquipmentPanel(parent, unit)
+local function prepareEquipmentPanel(parent, unit)
   if not parent or not cfg().enabled then
     return
   end
@@ -713,11 +732,14 @@ local function updateEquipmentPanel(parent, unit)
   end
 
   local panel = createEquipmentPanel(parent)
-  panel.statsPanel = createStatsPanel(panel)
-  positionEquipmentPanel(panel, parent)
+  local showStats = unit == "player"
+  if showStats then
+    panel.statsPanel = createStatsPanel(panel)
+  elseif panel.statsPanel then
+    panel.statsPanel:Hide()
+  end
+  positionEquipmentPanel(panel, parent, showStats)
   local unitName = UnitName(unit) or (unit == "player" and UnitName("player")) or "Unknown"
-  local total, count, maxLevel = 0, 0, 0
-  local totalStats = {}
   local profile = selectStatProfile(unit)
   local _, classFile = UnitClass(unit)
   local classColor = (classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile]) or NORMAL_FONT_COLOR
@@ -726,45 +748,48 @@ local function updateEquipmentPanel(parent, unit)
   panel.title:SetText(unitName or "Equipment")
   panel.title:SetTextColor(classColor.r, classColor.g, classColor.b)
   panel:SetBackdropBorderColor(classColor.r, classColor.g, classColor.b, 1)
-  panel.statsPanel:SetBackdropBorderColor(classColor.r, classColor.g, classColor.b, 1)
+  if panel.statsPanel then
+    panel.statsPanel:SetBackdropBorderColor(classColor.r, classColor.g, classColor.b, 1)
+  end
   SetPortraitTexture(panel.portrait, unit)
 
-  for index, row in ipairs(panel.rows) do
-    local slot = row.slot
-    local link = GetInventoryItemLink(unit, slot.id)
-    local name, quality, level = getItemInfo(link)
-    addStats(totalStats, link)
-    row.link = link
-    row.levelValue = level
+  return panel, profile, classColor
+end
 
-    if level and level > 0 then
-      total = total + level
-      count = count + 1
-      maxLevel = math.max(maxLevel, level)
-      row.level:SetText(tostring(level))
-      row.level:SetTextColor(0.1, 0.75, 1)
-    else
-      row.level:SetText("-")
-      row.level:SetTextColor(0.55, 0.55, 0.55)
-    end
-
-    if name then
-      local color = qualityColors[quality or 1] or qualityColors[1]
-      row.name:SetText(name)
-      row.name:SetTextColor(color.r, color.g, color.b)
-    else
-      row.name:SetText(slot.label or "")
-      row.name:SetTextColor(0.55, 0.55, 0.55)
-    end
+local function clearPanelRows(panel, text)
+  for _, row in ipairs(panel.rows) do
+    row.link = nil
+    row.levelValue = nil
+    row.level:SetText("-")
+    row.level:SetTextColor(0.55, 0.55, 0.55)
+    row.name:SetText(text or row.slot.label or "")
+    row.name:SetTextColor(0.55, 0.55, 0.55)
   end
+end
 
+local function setPanelLoading(panel, text)
+  clearPanelRows(panel, "")
+  panel.level:SetText(text or "读取中...")
+  panel.level:SetTextColor(1, 0.82, 0)
+  panel:Show()
+end
+
+local function updateSummary(panel, profile, unit, totalStats, total, count, maxLevel, pending)
   local average = count > 0 and total / count or 0
-  panel.level:SetFormattedText("iLvl %.1f  Max %d", average, maxLevel)
+  if pending and pending > 0 then
+    panel.level:SetFormattedText("iLvl %.1f  Max %d  读取中 %d", average, maxLevel, pending)
+  else
+    panel.level:SetFormattedText("iLvl %.1f  Max %d", average, maxLevel)
+  end
   panel.level:SetTextColor(1, 0.82, 0)
 
   local statsPanel = panel.statsPanel
+  if not statsPanel then
+    panel:Show()
+    return
+  end
   statsPanel.title:SetText("属性")
-  statsPanel.title:SetTextColor(classColor.r, classColor.g, classColor.b)
+  statsPanel.title:SetTextColor(panel.title:GetTextColor())
   statsPanel.profile:SetFormattedText("%s  %s", profile.title, getProfileSourceText(unit))
 
   local statKeys = {}
@@ -793,6 +818,176 @@ local function updateEquipmentPanel(parent, unit)
   panel:Show()
 end
 
+local function updateEquipmentRow(row, unit, totalStats, data)
+  local slot = row.slot
+  local link = data and data.link or GetInventoryItemLink(unit, slot.id)
+  row.link = link
+
+  if link then
+    requestItemData(link)
+  end
+
+  local name, quality, level
+  if data then
+    name = data.name
+    quality = data.quality
+    level = data.level
+    if data.stats then
+      for stat, value in pairs(data.stats) do
+        totalStats[stat] = (totalStats[stat] or 0) + value
+      end
+    end
+  else
+    name, quality, level = getItemInfo(link)
+    addStats(totalStats, link)
+  end
+  row.levelValue = level
+
+  if level and level > 0 then
+    row.level:SetText(tostring(level))
+    row.level:SetTextColor(0.1, 0.75, 1)
+  else
+    row.level:SetText("-")
+    row.level:SetTextColor(0.55, 0.55, 0.55)
+  end
+
+  if name then
+    local color = qualityColors[quality or 1] or qualityColors[1]
+    row.name:SetText(name)
+    row.name:SetTextColor(color.r, color.g, color.b)
+  elseif link then
+    row.name:SetText("读取中")
+    row.name:SetTextColor(0.72, 0.72, 0.55)
+  else
+    row.name:SetText(slot.label or "")
+    row.name:SetTextColor(0.55, 0.55, 0.55)
+  end
+
+  if cfg().qualityBorders and row.label and quality and quality > 1 then
+    local color = qualityColors[quality] or qualityColors[1]
+    row.label:SetBackdropBorderColor(color.r, color.g, color.b, 0.9)
+  elseif row.label then
+    row.label:SetBackdropBorderColor(0, 0.9, 0.9, 0.22)
+  end
+
+  return link ~= nil and name == nil, level or 0
+end
+
+local function readEquipmentSlot(unit, row)
+  local link = GetInventoryItemLink(unit, row.slot.id)
+  if not link then
+    return { link = nil, ready = true, level = 0, stats = {} }
+  end
+
+  requestItemData(link)
+  local name, quality, level = getItemInfo(link)
+  if not name then
+    return { link = link, ready = false, level = 0, stats = {} }
+  end
+
+  local stats = {}
+  addStats(stats, link)
+  return {
+    link = link,
+    ready = true,
+    name = name,
+    quality = quality,
+    level = level or 0,
+    stats = stats,
+  }
+end
+
+local function updateEquipmentPanel(parent, unit)
+  local panel, profile = prepareEquipmentPanel(parent, unit)
+  if not panel then
+    return
+  end
+
+  local total, count, maxLevel = 0, 0, 0
+  local totalStats = {}
+  for index, row in ipairs(panel.rows) do
+    local _, level = updateEquipmentRow(row, unit, totalStats)
+    if level and level > 0 then
+      total = total + level
+      count = count + 1
+      maxLevel = math.max(maxLevel, level)
+    end
+  end
+
+  updateSummary(panel, profile, unit, totalStats, total, count, maxLevel, 0)
+end
+
+local function startAsyncEquipmentPanel(parent, unit)
+  local panel, profile = prepareEquipmentPanel(parent, unit)
+  if not panel then
+    return
+  end
+
+  local token = (equipmentJobs[parent] or 0) + 1
+  equipmentJobs[parent] = token
+  equipmentJobActive[parent] = true
+  setPanelLoading(panel, "读取中...")
+
+  local job = {
+    parent = parent,
+    unit = unit,
+    panel = panel,
+    profile = profile,
+    token = token,
+    tries = 0,
+  }
+
+  local function isCurrent()
+    return equipmentJobs[parent] == token and parent:IsShown() and UnitExists(unit)
+  end
+
+  local function render(data)
+    local total, count, maxLevel = 0, 0, 0
+    local totalStats = {}
+
+    updateButtonVisuals("Inspect", unit)
+
+    for index, row in ipairs(panel.rows) do
+      local _, level = updateEquipmentRow(row, unit, totalStats, data[index])
+      if level and level > 0 then
+        total = total + level
+        count = count + 1
+        maxLevel = math.max(maxLevel, level)
+      end
+    end
+
+    updateSummary(panel, profile, unit, totalStats, total, count, maxLevel, 0)
+    equipmentJobActive[parent] = nil
+  end
+
+  local function poll()
+    if not isCurrent() then
+      equipmentJobActive[parent] = nil
+      return
+    end
+
+    job.tries = job.tries + 1
+    local data = {}
+    local pending = 0
+    for index, row in ipairs(panel.rows) do
+      data[index] = readEquipmentSlot(unit, row)
+      if not data[index].ready then
+        pending = pending + 1
+      end
+    end
+
+    if pending == 0 or job.tries >= 12 then
+      render(data)
+      return
+    end
+
+    setPanelLoading(panel, ("读取中... %d"):format(pending))
+    after(0.12, poll)
+  end
+
+  after(0.01, poll)
+end
+
 characterPanelParent = function()
   return CharacterFrame or PaperDollFrame
 end
@@ -805,6 +1000,22 @@ local function isCharacterEquipmentVisible()
 end
 
 local updateInspectEquipment
+local inspectUpdatePending
+
+local function requestInspectEquipmentUpdate(delay)
+  if inspectUpdatePending then
+    return
+  end
+  if InspectFrame and equipmentJobActive[InspectFrame] then
+    return
+  end
+
+  inspectUpdatePending = true
+  after(delay or 0.15, function()
+    inspectUpdatePending = nil
+    updateInspectEquipment()
+  end)
+end
 
 local function updateCharacterEquipment()
   if not isCharacterEquipmentVisible() then
@@ -814,6 +1025,71 @@ local function updateCharacterEquipment()
   updateButtonVisuals("Character", "player")
   updateRepairCost()
   updateEquipmentPanel(characterPanelParent(), "player")
+end
+
+local function hideEquipmentButtonVisuals(prefix)
+  for _, slot in ipairs(inventorySlots) do
+    local button = getButton(prefix, slot)
+    if button then
+      if button.AutyanQualityBorder then
+        button.AutyanQualityBorder:Hide()
+      end
+      if button.AutyanDurabilityText and button.Count then
+        button.Count:SetText("")
+        button.AutyanDurabilityText = nil
+      end
+    end
+  end
+end
+
+local function hideInspectEquipmentPanels()
+  if InspectFrame and InspectFrame.AutyanEquipmentPanel then
+    if InspectFrame.AutyanEquipmentPanel.statsPanel then
+      InspectFrame.AutyanEquipmentPanel.statsPanel:Hide()
+    end
+    InspectFrame.AutyanEquipmentPanel:Hide()
+  end
+end
+
+function AutyanCore_RefreshEquipmentInfo()
+  updateCharacterEquipment()
+  requestInspectEquipmentUpdate(0.1)
+end
+
+function AutyanCore_GetEquipmentInfoFlag(key)
+  return cfg()[key]
+end
+
+function AutyanCore_SetEquipmentInfoFlag(key, value)
+  local c = cfg()
+  if c[key] == nil then
+    return
+  end
+
+  c[key] = value and true or false
+
+  if key == "enabled" and not c.enabled then
+    hideCharacterEquipmentPanels()
+    hideInspectEquipmentPanels()
+    hideEquipmentButtonVisuals("Character")
+    hideEquipmentButtonVisuals("Inspect")
+    return
+  end
+
+  if key == "characterPanel" and not c.characterPanel then
+    hideCharacterEquipmentPanels()
+  elseif key == "inspectPanel" and not c.inspectPanel then
+    hideInspectEquipmentPanels()
+  elseif key == "durability" and not c.durability then
+    hideEquipmentButtonVisuals("Character")
+  elseif key == "qualityBorders" and not c.qualityBorders then
+    hideEquipmentButtonVisuals("Character")
+    hideEquipmentButtonVisuals("Inspect")
+  elseif key == "repairCost" and not c.repairCost and PaperDollFrame and PaperDollFrame.AutyanRepairMoneyFrame then
+    PaperDollFrame.AutyanRepairMoneyFrame:Hide()
+  end
+
+  AutyanCore_RefreshEquipmentInfo()
 end
 
 function AutyanCore_EquipmentInfoDebug()
@@ -853,8 +1129,7 @@ updateInspectEquipment = function()
     return
   end
 
-  updateButtonVisuals("Inspect", unit)
-  updateEquipmentPanel(InspectFrame, unit)
+  startAsyncEquipmentPanel(InspectFrame, unit)
 end
 
 local initialized
@@ -885,7 +1160,7 @@ local function initializeEquipmentInfo()
 
   if InspectFrame then
     InspectFrame:HookScript("OnShow", function()
-      after(0.2, updateInspectEquipment)
+      requestInspectEquipmentUpdate(0.2)
     end)
   end
 
@@ -896,13 +1171,13 @@ local function initializeEquipmentInfo()
 
     if InspectPaperDollItemSlotButton_Update then
       hooksecurefunc("InspectPaperDollItemSlotButton_Update", function()
-        after(0, updateInspectEquipment)
+        requestInspectEquipmentUpdate(0.15)
       end)
     end
 
     if InspectUnit then
       hooksecurefunc("InspectUnit", function()
-        after(0.5, updateInspectEquipment)
+        requestInspectEquipmentUpdate(0.5)
       end)
     end
 
@@ -925,13 +1200,17 @@ events:RegisterEvent("MERCHANT_SHOW")
 events:RegisterEvent("INSPECT_READY")
 events:RegisterEvent("CHARACTER_POINTS_CHANGED")
 events:RegisterEvent("PLAYER_TALENT_UPDATE")
+pcall(events.RegisterEvent, events, "ITEM_DATA_LOAD_RESULT")
+pcall(events.RegisterEvent, events, "GET_ITEM_INFO_RECEIVED")
 events:SetScript("OnEvent", function(_, event)
   if event == "PLAYER_LOGIN" then
     initializeEquipmentInfo()
   elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "UPDATE_INVENTORY_DURABILITY" or event == "MERCHANT_SHOW" or event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_TALENT_UPDATE" then
     after(0, updateCharacterEquipment)
   elseif event == "INSPECT_READY" then
-    after(0.2, updateInspectEquipment)
+    requestInspectEquipmentUpdate(0.2)
+  elseif (event == "ITEM_DATA_LOAD_RESULT" or event == "GET_ITEM_INFO_RECEIVED") and InspectFrame and InspectFrame:IsShown() then
+    requestInspectEquipmentUpdate(0.05)
   end
 end)
 
@@ -940,25 +1219,10 @@ SlashCmdList.AUTYANCORE_EQUIPMENT = function(input)
   input = input and input:lower() or ""
   local c = cfg()
   if input == "on" then
-    c.enabled = true
-    updateCharacterEquipment()
-    updateInspectEquipment()
+    AutyanCore_SetEquipmentInfoFlag("enabled", true)
     printMsg("equipment info enabled")
   elseif input == "off" then
-    c.enabled = false
-    local parent = characterPanelParent()
-    if parent and parent.AutyanEquipmentPanel then
-      if parent.AutyanEquipmentPanel.statsPanel then
-        parent.AutyanEquipmentPanel.statsPanel:Hide()
-      end
-      parent.AutyanEquipmentPanel:Hide()
-    end
-    if InspectFrame and InspectFrame.AutyanEquipmentPanel then
-      if InspectFrame.AutyanEquipmentPanel.statsPanel then
-        InspectFrame.AutyanEquipmentPanel.statsPanel:Hide()
-      end
-      InspectFrame.AutyanEquipmentPanel:Hide()
-    end
+    AutyanCore_SetEquipmentInfoFlag("enabled", false)
     printMsg("equipment info disabled")
   elseif input == "debug" then
     AutyanCore_EquipmentInfoDebug()

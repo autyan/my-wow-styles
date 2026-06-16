@@ -334,9 +334,6 @@ local function applyChatClassColors()
   end
 end
 
-local copyBuffer = {}
-local copyBufferNextId = 0
-local copyHistory = {}
 local chatAssistantFilterInstalled
 local configUI
 local updateChatSwitchBar
@@ -422,24 +419,6 @@ local function ensureDefaultChatKeyword()
   end
 end
 
-local function addCopyBufferText(text)
-  copyBufferNextId = copyBufferNextId + 1
-  if copyBufferNextId > 999999 then
-    copyBufferNextId = 1
-  end
-
-  copyBuffer[copyBufferNextId] = text
-  copyHistory[#copyHistory + 1] = text
-  while #copyHistory > 100 do
-    table.remove(copyHistory, 1)
-  end
-  local oldest = copyBufferNextId - 80
-  if oldest > 0 then
-    copyBuffer[oldest] = nil
-  end
-  return copyBufferNextId
-end
-
 local function highlightChatKeywords(message)
   local cfg = chatAssistantDb()
   if not cfg.enabled or not cfg.keywordHighlight then
@@ -456,53 +435,13 @@ local function highlightChatKeywords(message)
   return highlighted
 end
 
-local function chatCopyLabelFor(event, author, message)
-  local channel = event and event:gsub("^CHAT_MSG_", "") or "CHAT"
-  local text = stripChatFormatting(message)
-  if author and author ~= "" then
-    return ("[%s] %s: %s"):format(channel, author, text)
-  end
-  return ("[%s] %s"):format(channel, text)
-end
-
 local function chatAssistantFilter(_, event, message, author, ...)
   local cfg = chatAssistantDb()
   if not cfg.enabled or type(message) ~= "string" then
     return false, message, author, ...
   end
 
-  local output = highlightChatKeywords(message)
-  if cfg.copyLinks then
-    addCopyBufferText(chatCopyLabelFor(event, author, message))
-  end
-
-  return false, output, author, ...
-end
-
-local function showCopyPopup(text)
-  if not StaticPopupDialogs or not StaticPopup_Show then
-    printMsg(stripChatFormatting(text))
-    return
-  end
-
-  StaticPopupDialogs.AUTYANCORE_COPY_CHAT = StaticPopupDialogs.AUTYANCORE_COPY_CHAT or {
-    text = "复制聊天内容",
-    button1 = OKAY or "OK",
-    hasEditBox = true,
-    editBoxWidth = 360,
-    maxLetters = 4096,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3,
-  }
-
-  local dialog = StaticPopup_Show("AUTYANCORE_COPY_CHAT")
-  if dialog and dialog.editBox then
-    dialog.editBox:SetText(text or "")
-    dialog.editBox:HighlightText()
-    dialog.editBox:SetFocus()
-  end
+  return false, highlightChatKeywords(message), author, ...
 end
 
 local function installChatAssistantFilters()
@@ -985,14 +924,198 @@ end
 
 local copyPanel
 
-local function recentCopyText(limit)
-  limit = limit or 40
-  local lines = {}
-  local startIndex = math.max(1, #copyHistory - limit + 1)
-  for index = startIndex, #copyHistory do
-    lines[#lines + 1] = copyHistory[index]
+local function chatWindowName(index)
+  local name
+  if GetChatWindowInfo then
+    name = GetChatWindowInfo(index)
   end
-  return table.concat(lines, "\n")
+  if name and name ~= "" then
+    return name
+  end
+  if index == 1 then
+    return GENERAL or "综合"
+  end
+  return ("Chat %d"):format(index)
+end
+
+local function readableChatFrame(index)
+  local frame = _G["ChatFrame" .. index]
+  if not frame then
+    return nil
+  end
+  if frame.isDocked or frame:IsShown() or index == 1 then
+    return frame
+  end
+  return frame
+end
+
+local function chatMessageFromInfo(frame, index)
+  if not frame or not frame.GetMessageInfo then
+    return nil
+  end
+  local ok, message = pcall(frame.GetMessageInfo, frame, index)
+  if ok and message and message ~= "" then
+    return stripChatFormatting(message)
+  end
+  return nil
+end
+
+local function collectVisibleChatLines(frame)
+  local lines = {}
+  local visibleLines = frame and (frame.visibleLines or frame.VisibleLines)
+  if type(visibleLines) == "table" then
+    for _, line in ipairs(visibleLines) do
+      if line and line:IsShown() and line.GetText then
+        local text = stripChatFormatting(line:GetText())
+        if text and text ~= "" then
+          lines[#lines + 1] = text
+        end
+      end
+    end
+  end
+  return lines
+end
+
+local function collectChatMessages(frame)
+  local messages = {}
+  if frame and frame.GetNumMessages and frame.GetMessageInfo then
+    local ok, count = pcall(frame.GetNumMessages, frame)
+    if ok and count and count > 0 then
+      local startIndex = math.max(1, count - 199)
+      for index = startIndex, count do
+        local text = chatMessageFromInfo(frame, index)
+        if text and text ~= "" then
+          messages[#messages + 1] = text
+        end
+      end
+    end
+  end
+
+  if #messages == 0 then
+    messages = collectVisibleChatLines(frame)
+  end
+
+  return messages
+end
+
+local function refreshCopyPanelMessages(frame)
+  if not frame then
+    return
+  end
+  local chatFrame = readableChatFrame(frame.selectedChatIndex or 1)
+  frame.messages = collectChatMessages(chatFrame)
+  frame.messageOffset = math.max(1, #frame.messages - #frame.messageRows + 1)
+  frame.selectedMessageIndex = #frame.messages > 0 and #frame.messages or nil
+end
+
+local function selectCopyPanelMessage(frame, messageIndex)
+  if not frame then
+    return
+  end
+  frame.selectedMessageIndex = messageIndex
+  local text = messageIndex and frame.messages and frame.messages[messageIndex] or ""
+  frame.editBox:SetText(text or "")
+  frame.editBox:HighlightText()
+  frame.editBox:SetFocus()
+  if frame.messageRows then
+    for _, row in ipairs(frame.messageRows) do
+      if row.messageIndex == messageIndex then
+        row.bg:SetVertexColor(0.08, 0.46, 0.56, 0.72)
+      else
+        row.bg:SetVertexColor(0.08, 0.18, 0.14, row.rowIndex % 2 == 1 and 0.35 or 0.18)
+      end
+    end
+  end
+end
+
+local function renderCopyPanelMessages(frame)
+  if not frame then
+    return
+  end
+  local messages = frame.messages or {}
+  local offset = frame.messageOffset or 1
+  for rowIndex, row in ipairs(frame.messageRows or {}) do
+    local messageIndex = offset + rowIndex - 1
+    local text = messages[messageIndex]
+    row.rowIndex = rowIndex
+    row.messageIndex = text and messageIndex or nil
+    if text then
+      row.text:SetText(text)
+      row:Show()
+    else
+      row.text:SetText("")
+      row:Hide()
+    end
+  end
+
+  if frame.emptyText then
+    if #messages == 0 then
+      frame.emptyText:Show()
+    else
+      frame.emptyText:Hide()
+    end
+  end
+
+  if frame.rangeText then
+    if #messages == 0 then
+      frame.rangeText:SetText("0/0")
+    else
+      local last = math.min(#messages, offset + #frame.messageRows - 1)
+      frame.rangeText:SetFormattedText("%d-%d/%d", offset, last, #messages)
+    end
+  end
+  selectCopyPanelMessage(frame, frame.selectedMessageIndex)
+end
+
+local function selectCopyPanelChat(frame, index)
+  if not frame then
+    return
+  end
+  frame.selectedChatIndex = index
+  for _, button in ipairs(frame.tabButtons or {}) do
+    if button.chatIndex == index then
+      button:SetText("|cff33ff99" .. button.chatLabel .. "|r")
+    else
+      button:SetText(button.chatLabel)
+    end
+  end
+  refreshCopyPanelMessages(frame)
+  renderCopyPanelMessages(frame)
+end
+
+local function renderCopyPanelTabs(frame)
+  if not frame then
+    return
+  end
+  local count = NUM_CHAT_WINDOWS or 10
+  local visible = 0
+  local previousButton
+  for index = 1, count do
+    local chatFrame = readableChatFrame(index)
+    local button = frame.tabButtons[index]
+    if chatFrame and button then
+      visible = visible + 1
+      button.chatIndex = index
+      button.chatLabel = chatWindowName(index)
+      button:SetText(button.chatLabel)
+      button:Show()
+      button:ClearAllPoints()
+      if not previousButton then
+        button:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -48)
+      else
+        button:SetPoint("TOPLEFT", previousButton, "BOTTOMLEFT", 0, -4)
+      end
+      previousButton = button
+    elseif button then
+      button:Hide()
+    end
+  end
+  if not frame.selectedChatIndex or not readableChatFrame(frame.selectedChatIndex) then
+    frame.selectedChatIndex = SELECTED_CHAT_FRAME and SELECTED_CHAT_FRAME:GetID() or 1
+  end
+  if not readableChatFrame(frame.selectedChatIndex) then
+    frame.selectedChatIndex = 1
+  end
 end
 
 local function createCopyPanel()
@@ -1001,7 +1124,7 @@ local function createCopyPanel()
   end
 
   local frame = CreateFrame("Frame", "AutyanCoreCopyPanel", UIParent)
-  frame:SetSize(560, 360)
+  frame:SetSize(720, 400)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("DIALOG")
   frame:SetMovable(true)
@@ -1023,53 +1146,126 @@ local function createCopyPanel()
   close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
   close:SetScript("OnClick", function() frame:Hide() end)
 
+  frame.tabButtons = {}
+  for index = 1, (NUM_CHAT_WINDOWS or 10) do
+    local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    button:SetSize(92, 22)
+    button:SetScript("OnClick", function(self)
+      selectCopyPanelChat(frame, self.chatIndex)
+    end)
+    frame.tabButtons[index] = button
+  end
+
+  local listBg = frame:CreateTexture(nil, "BACKGROUND")
+  listBg:SetPoint("TOPLEFT", frame, "TOPLEFT", 120, -48)
+  listBg:SetSize(294, 292)
+  setSolidTexture(listBg, 0.015, 0.018, 0.022, 0.82)
+
+  frame.messageRows = {}
+  local previous
+  for index = 1, 14 do
+    local row = CreateFrame("Button", nil, frame)
+    row:SetSize(286, 19)
+    if previous then
+      row:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -1)
+    else
+      row:SetPoint("TOPLEFT", frame, "TOPLEFT", 124, -52)
+    end
+    row.bg = row:CreateTexture(nil, "BACKGROUND")
+    row.bg:SetAllPoints(row)
+    row.bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text:SetPoint("LEFT", row, "LEFT", 6, 0)
+    row.text:SetWidth(274)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(false)
+    row:SetScript("OnClick", function(self)
+      if self.messageIndex then
+        selectCopyPanelMessage(frame, self.messageIndex)
+      end
+    end)
+    row:SetScript("OnEnter", function(self)
+      if self.messageIndex then
+        selectCopyPanelMessage(frame, self.messageIndex)
+      end
+    end)
+    frame.messageRows[index] = row
+    previous = row
+  end
+
+  frame.emptyText = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  frame.emptyText:SetPoint("TOPLEFT", frame, "TOPLEFT", 132, -58)
+  frame.emptyText:SetText("这个聊天页没有可读取的消息。")
+
   local scroll = CreateFrame("ScrollFrame", "AutyanCoreCopyPanelScrollFrame", frame, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -48)
-  scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -32, 48)
+  scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 428, -48)
+  scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -32, 58)
 
   local editBox = CreateFrame("EditBox", "AutyanCoreCopyPanelEditBox", scroll)
   editBox:SetMultiLine(true)
   editBox:SetAutoFocus(false)
   editBox:SetFontObject(ChatFontNormal)
-  editBox:SetWidth(500)
+  editBox:SetWidth(248)
   editBox:SetTextInsets(4, 4, 4, 4)
   editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   scroll:SetScrollChild(editBox)
   frame.editBox = editBox
 
-  local recent = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  recent:SetSize(86, 22)
-  recent:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 14)
-  recent:SetText("最近40")
-  recent:SetScript("OnClick", function()
-    editBox:SetText(recentCopyText(40))
+  local older = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  older:SetSize(64, 22)
+  older:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 120, 18)
+  older:SetText("更早")
+  older:SetScript("OnClick", function()
+    frame.messageOffset = math.max(1, (frame.messageOffset or 1) - #frame.messageRows)
+    frame.selectedMessageIndex = frame.messageOffset
+    renderCopyPanelMessages(frame)
+  end)
+
+  local newer = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  newer:SetSize(64, 22)
+  newer:SetPoint("LEFT", older, "RIGHT", 8, 0)
+  newer:SetText("更新")
+  newer:SetScript("OnClick", function()
+    local maxOffset = math.max(1, #(frame.messages or {}) - #frame.messageRows + 1)
+    frame.messageOffset = math.min(maxOffset, (frame.messageOffset or 1) + #frame.messageRows)
+    frame.selectedMessageIndex = frame.messageOffset
+    renderCopyPanelMessages(frame)
+  end)
+
+  local copyPage = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  copyPage:SetSize(86, 22)
+  copyPage:SetPoint("LEFT", newer, "RIGHT", 8, 0)
+  copyPage:SetText("复制当前页")
+  copyPage:SetScript("OnClick", function()
+    local lines = {}
+    local messages = frame.messages or {}
+    local offset = frame.messageOffset or 1
+    for index = offset, math.min(#messages, offset + #frame.messageRows - 1) do
+      lines[#lines + 1] = messages[index]
+    end
+    editBox:SetText(table.concat(lines, "\n"))
     editBox:HighlightText()
     editBox:SetFocus()
   end)
 
-  local all = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  all:SetSize(86, 22)
-  all:SetPoint("LEFT", recent, "RIGHT", 8, 0)
-  all:SetText("全部")
-  all:SetScript("OnClick", function()
-    editBox:SetText(recentCopyText(100))
-    editBox:HighlightText()
-    editBox:SetFocus()
+  local refresh = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  refresh:SetSize(64, 22)
+  refresh:SetPoint("LEFT", copyPage, "RIGHT", 8, 0)
+  refresh:SetText("刷新")
+  refresh:SetScript("OnClick", function()
+    refreshCopyPanelMessages(frame)
+    renderCopyPanelMessages(frame)
   end)
 
-  local clear = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  clear:SetSize(86, 22)
-  clear:SetPoint("LEFT", all, "RIGHT", 8, 0)
-  clear:SetText("清空")
-  clear:SetScript("OnClick", function()
-    copyHistory = {}
-    copyBuffer = {}
-    editBox:SetText("")
-  end)
+  frame.rangeText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  frame.rangeText:SetPoint("LEFT", refresh, "RIGHT", 10, 0)
+  frame.rangeText:SetSize(80, 18)
+  frame.rangeText:SetJustifyH("LEFT")
+  frame.rangeText:SetTextColor(0.62, 0.68, 0.72, 1)
 
   local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  hint:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -18, 24)
-  hint:SetText("Ctrl+C 复制，Esc 取消焦点")
+  hint:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -18, 28)
+  hint:SetText("点击左侧聊天页和消息，右侧 Ctrl+C")
   hint:SetTextColor(0.62, 0.68, 0.72, 1)
 
   frame:Hide()
@@ -1080,9 +1276,13 @@ end
 showCopyPanel = function(text)
   local frame = createCopyPanel()
   frame:Show()
-  frame.editBox:SetText(text or recentCopyText(40))
-  frame.editBox:HighlightText()
-  frame.editBox:SetFocus()
+  renderCopyPanelTabs(frame)
+  selectCopyPanelChat(frame, frame.selectedChatIndex or 1)
+  if text and text ~= "" then
+    frame.editBox:SetText(stripChatFormatting(text))
+    frame.editBox:HighlightText()
+    frame.editBox:SetFocus()
+  end
 end
 
 local function copyTextFromMouseoverLine(frame)

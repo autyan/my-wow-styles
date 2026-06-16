@@ -85,6 +85,7 @@ local statAliases = {
   rangedAttackPower = { "ITEM_MOD_RANGED_ATTACK_POWER_SHORT", "ITEM_MOD_RANGED_ATTACK_POWER" },
   spellPower = { "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_POWER", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE" },
   healing = { "ITEM_MOD_HEALING_DONE_SHORT", "ITEM_MOD_HEALING_DONE", "ITEM_MOD_HEALING_SHORT", "ITEM_MOD_HEALING" },
+  armor = { "ITEM_MOD_ARMOR_SHORT", "ITEM_MOD_ARMOR", "RESISTANCE0_NAME" },
   crit = { "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_CRIT_RATING", "ITEM_MOD_SPELL_CRIT_RATING_SHORT", "ITEM_MOD_SPELL_CRIT_RATING" },
   hit = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_RATING", "ITEM_MOD_SPELL_HIT_RATING_SHORT", "ITEM_MOD_SPELL_HIT_RATING" },
   haste = { "ITEM_MOD_HASTE_RATING_SHORT", "ITEM_MOD_HASTE_RATING", "ITEM_MOD_SPELL_HASTE_RATING_SHORT", "ITEM_MOD_SPELL_HASTE_RATING" },
@@ -93,6 +94,7 @@ local statAliases = {
   expertise = { "ITEM_MOD_EXPERTISE_RATING_SHORT", "ITEM_MOD_EXPERTISE_RATING" },
   defense = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_DEFENSE_SKILL_RATING" },
   dodge = { "ITEM_MOD_DODGE_RATING_SHORT", "ITEM_MOD_DODGE_RATING" },
+  resilience = { "ITEM_MOD_RESILIENCE_RATING_SHORT", "ITEM_MOD_RESILIENCE_RATING" },
   parry = { "ITEM_MOD_PARRY_RATING_SHORT", "ITEM_MOD_PARRY_RATING" },
   block = { "ITEM_MOD_BLOCK_RATING_SHORT", "ITEM_MOD_BLOCK_RATING" },
   blockValue = { "ITEM_MOD_BLOCK_VALUE_SHORT", "ITEM_MOD_BLOCK_VALUE" },
@@ -129,6 +131,24 @@ local statProfiles = {
     offense = { "defense", "dodge", "parry", "block", "blockValue", "hit", "expertise" },
     rating = { defense = "defense", dodge = "dodge", parry = "parry", block = "block", hit = "hit", expertise = "expertise" },
   },
+  feralCat = {
+    title = "猫德",
+    primary = { "agility", "strength", "stamina" },
+    offense = { "attackPower", "hit", "crit", "expertise", "haste", "armorPen" },
+    rating = { hit = "hit", crit = "crit", haste = "haste", expertise = "expertise" },
+  },
+  feralBear = {
+    title = "熊坦",
+    primary = { "stamina", "agility", "armor" },
+    offense = { "defense", "dodge", "resilience", "expertise", "hit", "crit", "attackPower" },
+    rating = { defense = "defense", dodge = "dodge", resilience = "resilience", expertise = "expertise", hit = "hit", crit = "crit" },
+  },
+  feralHybrid = {
+    title = "野性综合",
+    primary = { "agility", "strength", "stamina", "armor" },
+    offense = { "attackPower", "hit", "crit", "dodge", "defense", "expertise" },
+    rating = { hit = "hit", crit = "crit", dodge = "dodge", defense = "defense", expertise = "expertise" },
+  },
   balanced = {
     title = "综合",
     primary = { "agility", "strength", "intellect", "stamina", "spirit" },
@@ -147,6 +167,7 @@ local statLabels = {
   rangedAttackPower = "远程攻强",
   spellPower = "法强",
   healing = "治疗",
+  armor = "护甲",
   crit = "暴击",
   hit = "命中",
   haste = "急速",
@@ -155,6 +176,7 @@ local statLabels = {
   expertise = "精准",
   defense = "防御",
   dodge = "闪避",
+  resilience = "韧性",
   parry = "招架",
   block = "格挡",
   blockValue = "格挡值",
@@ -170,6 +192,7 @@ local ratingBaseValues = {
   spellCrit = 14,
   defense = 1.5,
   dodge = 12,
+  resilience = 39.4,
   parry = 15,
   block = 5,
 }
@@ -417,51 +440,108 @@ local function getPrimaryTalentInfo()
   return bestIndex, bestName
 end
 
-local function selectStatProfile(unit)
+local function activeDruidFormKind()
+  if not GetNumShapeshiftForms or not GetShapeshiftFormInfo then
+    return nil
+  end
+
+  for index = 1, GetNumShapeshiftForms() or 0 do
+    local icon, name, active = GetShapeshiftFormInfo(index)
+    if active then
+      local text = ((name or "") .. " " .. (icon or "")):lower()
+      if text:find("cat", 1, true) or text:find("猎豹", 1, true) then
+        return "cat"
+      end
+      if text:find("bear", 1, true) or text:find("熊", 1, true) then
+        return "bear"
+      end
+    end
+  end
+  return nil
+end
+
+local function selectFeralDruidProfile(totalStats)
+  local form = activeDruidFormKind()
+  if form == "cat" then
+    return statProfiles.feralCat, "形态"
+  elseif form == "bear" then
+    return statProfiles.feralBear, "形态"
+  end
+
+  if totalStats then
+    local tankScore =
+      statValue(totalStats, "defense") * 3 +
+      statValue(totalStats, "dodge") * 3 +
+      statValue(totalStats, "resilience") * 2 +
+      statValue(totalStats, "armor") / 120 +
+      statValue(totalStats, "stamina") * 0.7
+    local catScore =
+      statValue(totalStats, "attackPower") / 12 +
+      statValue(totalStats, "agility") * 0.7 +
+      statValue(totalStats, "strength") * 0.6 +
+      statValue(totalStats, "hit") * 3 +
+      statValue(totalStats, "crit") * 2 +
+      statValue(totalStats, "expertise") * 3 +
+      statValue(totalStats, "armorPen") * 0.35
+
+    if tankScore >= catScore * 1.25 and tankScore > 20 then
+      return statProfiles.feralBear, "装备倾向"
+    elseif catScore >= tankScore * 1.15 and catScore > 20 then
+      return statProfiles.feralCat, "装备倾向"
+    end
+  end
+
+  return statProfiles.feralHybrid, "天赋"
+end
+
+local function selectStatProfile(unit, totalStats)
   local _, classFile = UnitClass(unit)
   local talentIndex = unit == "player" and getPrimaryTalentInfo() or nil
 
   if classFile == "HUNTER" then
-    return statProfiles.ranged
+    return statProfiles.ranged, "职业"
   elseif classFile == "ROGUE" then
-    return statProfiles.physical
+    return statProfiles.physical, "职业"
   elseif classFile == "WARRIOR" then
-    return talentIndex == 3 and statProfiles.tank or statProfiles.physical
+    return talentIndex == 3 and statProfiles.tank or statProfiles.physical, "天赋"
   elseif classFile == "PALADIN" then
     if talentIndex == 1 then
-      return statProfiles.healer
+      return statProfiles.healer, "天赋"
     elseif talentIndex == 2 then
-      return statProfiles.tank
+      return statProfiles.tank, "天赋"
     end
-    return statProfiles.physical
+    return statProfiles.physical, "天赋"
   elseif classFile == "SHAMAN" then
     if talentIndex == 3 then
-      return statProfiles.healer
+      return statProfiles.healer, "天赋"
     elseif talentIndex == 2 then
-      return statProfiles.physical
+      return statProfiles.physical, "天赋"
     end
-    return statProfiles.caster
+    return statProfiles.caster, "天赋"
   elseif classFile == "DRUID" then
     if talentIndex == 3 then
-      return statProfiles.healer
+      return statProfiles.healer, "天赋"
     elseif talentIndex == 2 then
-      return statProfiles.physical
+      return selectFeralDruidProfile(totalStats)
     end
-    return statProfiles.caster
+    return statProfiles.caster, "天赋"
   elseif classFile == "PRIEST" then
-    return talentIndex == 3 and statProfiles.caster or statProfiles.healer
+    return talentIndex == 3 and statProfiles.caster or statProfiles.healer, "天赋"
   elseif classFile == "MAGE" or classFile == "WARLOCK" then
-    return statProfiles.caster
+    return statProfiles.caster, "职业"
   end
 
-  return statProfiles.balanced
+  return statProfiles.balanced, "职业"
 end
 
-local function getProfileSourceText(unit)
+local function getProfileSourceText(unit, source)
   if unit ~= "player" then
     return "无"
   end
 
+  if source and source ~= "" then
+    return source
+  end
   local _, talentName = getPrimaryTalentInfo()
   return talentName or "无"
 end
@@ -548,7 +628,7 @@ local function createStatsPanel(parent)
   end
 
   local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-  frame:SetSize(205, 238)
+  frame:SetSize(220, 238)
   frame:SetClampedToScreen(true)
   frame:SetBackdrop({
     bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -567,14 +647,15 @@ local function createStatsPanel(parent)
 
   frame.profile = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
   frame.profile:SetPoint("TOPLEFT", frame.title, "BOTTOMLEFT", 0, -4)
-  frame.profile:SetWidth(170)
+  frame.profile:SetWidth(188)
   frame.profile:SetJustifyH("LEFT")
+  frame.profile:SetWordWrap(false)
 
   frame.rows = {}
   local previous = frame.profile
   for index = 1, 16 do
     local row = CreateFrame("Frame", nil, frame)
-    row:SetSize(176, 15)
+    row:SetSize(190, 15)
     if index == 1 then
       row:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -8)
     else
@@ -588,12 +669,12 @@ local function createStatsPanel(parent)
 
     row.label = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     row.label:SetPoint("LEFT", row, "LEFT", 8, 0)
-    row.label:SetWidth(94)
+    row.label:SetWidth(102)
     row.label:SetJustifyH("LEFT")
 
     row.value = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     row.value:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-    row.value:SetWidth(64)
+    row.value:SetWidth(72)
     row.value:SetJustifyH("RIGHT")
 
     frame.rows[index] = row
@@ -1043,6 +1124,9 @@ local function setPanelLoading(panel, text)
 end
 
 local function updateSummary(panel, profile, unit, totalStats, total, count, maxLevel, pending)
+  local resolvedProfile, profileSource = selectStatProfile(unit, totalStats)
+  profile = resolvedProfile or profile
+
   local average = count > 0 and total / count or 0
   if pending and pending > 0 then
     panel.level:SetFormattedText("iLvl %.1f  Max %d  读取中 %d", average, maxLevel, pending)
@@ -1058,7 +1142,7 @@ local function updateSummary(panel, profile, unit, totalStats, total, count, max
   end
   statsPanel.title:SetText("属性")
   statsPanel.title:SetTextColor(panel.title:GetTextColor())
-  statsPanel.profile:SetFormattedText("%s  %s", profile.title, getProfileSourceText(unit))
+  statsPanel.profile:SetFormattedText("%s · %s", profile.title, getProfileSourceText(unit, profileSource))
 
   local statKeys = {}
   for _, key in ipairs(profile.primary) do
@@ -1270,6 +1354,10 @@ end
 
 local updateInspectEquipment
 local inspectUpdatePending
+local characterUpdatePending
+local characterUpdateDirtyInCombat
+local characterUpdating
+local lastCharacterUpdateAt = 0
 
 local function requestInspectEquipmentUpdate(delay)
   if inspectUpdatePending then
@@ -1287,13 +1375,52 @@ local function requestInspectEquipmentUpdate(delay)
 end
 
 local function updateCharacterEquipment()
+  if characterUpdating then
+    return
+  end
   if not isCharacterEquipmentVisible() then
     hideCharacterEquipmentPanels()
     return
   end
-  updateButtonVisuals("Character", "player")
-  updateRepairCost()
-  updateEquipmentPanel(characterPanelParent(), "player")
+  characterUpdating = true
+  lastCharacterUpdateAt = GetTime and GetTime() or 0
+  local ok, err = pcall(function()
+    updateButtonVisuals("Character", "player")
+    updateRepairCost()
+    updateEquipmentPanel(characterPanelParent(), "player")
+  end)
+  characterUpdating = nil
+  if not ok then
+    printMsg("equipment refresh failed: " .. tostring(err))
+  end
+end
+
+local function requestCharacterEquipmentUpdate(delay, allowInCombat)
+  if not isCharacterEquipmentVisible() then
+    hideCharacterEquipmentPanels()
+    return
+  end
+  if InCombatLockdown and InCombatLockdown() and not allowInCombat then
+    characterUpdateDirtyInCombat = true
+    return
+  end
+  if characterUpdatePending then
+    return
+  end
+  local now = GetTime and GetTime() or 0
+  if now - lastCharacterUpdateAt < 0.2 then
+    delay = math.max(delay or 0.15, 0.2 - (now - lastCharacterUpdateAt))
+  end
+
+  characterUpdatePending = true
+  after(delay or 0.15, function()
+    characterUpdatePending = nil
+    if InCombatLockdown and InCombatLockdown() and not allowInCombat then
+      characterUpdateDirtyInCombat = true
+      return
+    end
+    updateCharacterEquipment()
+  end)
 end
 
 local function hideEquipmentButtonVisuals(prefix)
@@ -1321,7 +1448,7 @@ local function hideInspectEquipmentPanels()
 end
 
 function AutyanCore_RefreshEquipmentInfo()
-  updateCharacterEquipment()
+  requestCharacterEquipmentUpdate(0.1)
   requestInspectEquipmentUpdate(0.1)
 end
 
@@ -1362,7 +1489,7 @@ function AutyanCore_SetEquipmentInfoFlag(key, value)
 end
 
 function AutyanCore_EquipmentInfoDebug()
-  updateCharacterEquipment()
+  requestCharacterEquipmentUpdate(0, true)
   updateInspectEquipment()
 
   local c = cfg()
@@ -1410,7 +1537,7 @@ local function initializeEquipmentInfo()
 
   if PaperDollFrame then
     PaperDollFrame:HookScript("OnShow", function()
-      after(0, updateCharacterEquipment)
+      requestCharacterEquipmentUpdate(0.1, true)
     end)
     PaperDollFrame:HookScript("OnHide", function()
       hideCharacterEquipmentPanels()
@@ -1419,8 +1546,7 @@ local function initializeEquipmentInfo()
 
   if CharacterFrame then
     CharacterFrame:HookScript("OnShow", function()
-      after(0, updateCharacterEquipment)
-      after(0.25, updateCharacterEquipment)
+      requestCharacterEquipmentUpdate(0.1, true)
     end)
     CharacterFrame:HookScript("OnHide", function()
       hideCharacterEquipmentPanels()
@@ -1434,10 +1560,6 @@ local function initializeEquipmentInfo()
   end
 
   if hooksecurefunc then
-    hooksecurefunc("PaperDollItemSlotButton_OnEvent", function()
-      after(0, updateCharacterEquipment)
-    end)
-
     if InspectPaperDollItemSlotButton_Update then
       hooksecurefunc("InspectPaperDollItemSlotButton_Update", function()
         requestInspectEquipmentUpdate(0.15)
@@ -1452,13 +1574,12 @@ local function initializeEquipmentInfo()
 
     if CharacterFrame_ShowSubFrame then
       hooksecurefunc("CharacterFrame_ShowSubFrame", function()
-        after(0, updateCharacterEquipment)
-        after(0.25, updateCharacterEquipment)
+        requestCharacterEquipmentUpdate(0.2, true)
       end)
     end
   end
 
-  after(1, updateCharacterEquipment)
+  requestCharacterEquipmentUpdate(1)
 end
 
 local events = CreateFrame("Frame")
@@ -1469,17 +1590,27 @@ events:RegisterEvent("MERCHANT_SHOW")
 events:RegisterEvent("INSPECT_READY")
 events:RegisterEvent("CHARACTER_POINTS_CHANGED")
 events:RegisterEvent("PLAYER_TALENT_UPDATE")
+pcall(events.RegisterEvent, events, "ACTIVE_TALENT_GROUP_CHANGED")
+pcall(events.RegisterEvent, events, "UPDATE_SHAPESHIFT_FORM")
+pcall(events.RegisterEvent, events, "PLAYER_REGEN_ENABLED")
 pcall(events.RegisterEvent, events, "ITEM_DATA_LOAD_RESULT")
 pcall(events.RegisterEvent, events, "GET_ITEM_INFO_RECEIVED")
 events:SetScript("OnEvent", function(_, event)
   if event == "PLAYER_LOGIN" then
     initializeEquipmentInfo()
-  elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "UPDATE_INVENTORY_DURABILITY" or event == "MERCHANT_SHOW" or event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_TALENT_UPDATE" then
-    after(0, updateCharacterEquipment)
+  elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "UPDATE_INVENTORY_DURABILITY" or event == "MERCHANT_SHOW" or event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_TALENT_UPDATE" or event == "ACTIVE_TALENT_GROUP_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
+    requestCharacterEquipmentUpdate(event == "UPDATE_SHAPESHIFT_FORM" and 0.25 or 0.15)
+  elseif event == "PLAYER_REGEN_ENABLED" then
+    if characterUpdateDirtyInCombat then
+      characterUpdateDirtyInCombat = nil
+      requestCharacterEquipmentUpdate(0.1, true)
+    end
   elseif event == "INSPECT_READY" then
     requestInspectEquipmentUpdate(0.2)
-  elseif (event == "ITEM_DATA_LOAD_RESULT" or event == "GET_ITEM_INFO_RECEIVED") and InspectFrame and InspectFrame:IsShown() then
-    requestInspectEquipmentUpdate(0.05)
+  elseif event == "ITEM_DATA_LOAD_RESULT" or event == "GET_ITEM_INFO_RECEIVED" then
+    if InspectFrame and InspectFrame:IsShown() then
+      requestInspectEquipmentUpdate(0.05)
+    end
   end
 end)
 
@@ -1496,7 +1627,7 @@ SlashCmdList.AUTYANCORE_EQUIPMENT = function(input)
   elseif input == "debug" then
     AutyanCore_EquipmentInfoDebug()
   else
-    updateCharacterEquipment()
+    requestCharacterEquipmentUpdate(0, true)
     updateInspectEquipment()
     printMsg("commands: /autyanequip on, /autyanequip off, /autyanequip debug")
   end

@@ -1,0 +1,11 @@
+{
+  "versionKey": "mop-classic-cn",
+  "displayName": "WoW China Mists of Pandaria Classic",
+  "wowInterface": 50504,
+  "status": "experimental",
+  "supportedProfiles": [
+    "autyan-hunter",
+    "autyan-druid"
+  ],
+  "defaultLayout": "layouts/autyan.v1.json"
+}

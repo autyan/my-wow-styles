@@ -1,9 +1,0 @@
-## Interface: 20505
-## Title: Autyan Core
-## Notes: Small project-specific UI fixes for Autyan's TBC Anniversary addon pack.
-## Author: Autyan
-## Version: 0.1.33
-## SavedVariables: AutyanCoreDB
-
-AutyanCore.lua
-EquipmentInfo.lua

@@ -1,0 +1,208 @@
+{
+  "versionKey": "tbc-anniversary-cn",
+  "displayName": "WoW China TBC Anniversary",
+  "interface": 20505,
+  "gameDirectoryName": "_anniversary_",
+  "workspaceAddons": [
+    {
+      "name": "AutyanCore",
+      "enabled": true,
+      "repoEnv": "AUTYANCORE_REPO",
+      "repoPath": "../autyan-wow-core",
+      "remote": "git@github.com:autyan/autyan-wow-core.git",
+      "build": ["scripts/build.sh", "tbc-anniversary-cn"],
+      "artifact": "build/dist/tbc-anniversary-cn/AutyanCore"
+    },
+    {
+      "name": "Venari",
+      "enabled": true,
+      "repoEnv": "VENARI_REPO",
+      "repoPath": "../venari-wow-plugin",
+      "remote": "git@github.com:autyan/venari-wow-plugin.git",
+      "build": ["scripts/build-release.sh", "tbc-anniversary-cn"],
+      "artifact": "dist/release/Venari"
+    }
+  ],
+  "thirdPartyAddons": [
+    {
+      "name": "AtlasLootClassic",
+      "purpose": "Dungeon, raid, PvP, reputation, collection, and profession loot lookup.",
+      "directories": [
+        "AtlasLootClassic",
+        "AtlasLootClassic_Collections",
+        "AtlasLootClassic_Crafting",
+        "AtlasLootClassic_Data",
+        "AtlasLootClassic_DungeonsAndRaids",
+        "AtlasLootClassic_Factions",
+        "AtlasLootClassic_Options",
+        "AtlasLootClassic_PvP"
+      ],
+      "sourceHints": ["CurseForge: AtlasLootClassic fork"]
+    },
+    {
+      "name": "Baganator",
+      "purpose": "Unified bag, bank, search, and item organization.",
+      "directories": ["Baganator"],
+      "sourceHints": ["CurseForge: Baganator"]
+    },
+    {
+      "name": "Bartender4",
+      "purpose": "Action bar layout and keybinding habits.",
+      "directories": ["Bartender4"],
+      "sourceHints": ["CurseForge: Bartender4"]
+    },
+    {
+      "name": "BlizzMove",
+      "purpose": "Move Blizzard frames.",
+      "directories": ["BlizzMove", "BlizzMove_Debug"],
+      "sourceHints": ["CurseForge: BlizzMove"]
+    },
+    {
+      "name": "ClassicAuraDurations",
+      "purpose": "Classic aura duration display support.",
+      "directories": ["ClassicAuraDurations"],
+      "sourceHints": ["CurseForge: ClassicAuraDurations"]
+    },
+    {
+      "name": "ClassicItemBorders",
+      "purpose": "Item quality borders.",
+      "directories": ["ClassicItemBorders"],
+      "sourceHints": ["CurseForge: Classic Item Borders"]
+    },
+    {
+      "name": "DBM",
+      "purpose": "Boss warnings. Use official independent DBM packages only; do not use BigFoot-bundled DBM.",
+      "directories": [
+        "DBM-Core",
+        "DBM-GUI",
+        "DBM-Outlands",
+        "DBM-Party-BC",
+        "DBM-Party-Vanilla",
+        "DBM-Raids-BC",
+        "DBM-StatusBarTimers",
+        "DBM-VPVEM",
+        "DBM-WorldEvents"
+      ],
+      "sourceHints": [
+        "CurseForge: Deadly Boss Mods",
+        "CurseForge: Deadly Boss Mods TBC",
+        "CurseForge: Deadly Boss Mods Dungeons"
+      ],
+      "avoidMarkers": ["BigFoot", "BigFoot_UI", "X-Revision: BigFoot", "Dependencies: BigFoot"]
+    },
+    {
+      "name": "Dejunk",
+      "purpose": "Junk selling and cleanup.",
+      "directories": ["Dejunk"],
+      "sourceHints": ["CurseForge: Dejunk"]
+    },
+    {
+      "name": "Details",
+      "purpose": "Damage meter and threat modules.",
+      "directories": ["Details", "Details_DataStorage", "Details_EncounterDetails", "Details_TinyThreat"],
+      "sourceHints": ["CurseForge: Details Damage Meter Burning Crusade"]
+    },
+    {
+      "name": "Leatrix_Maps",
+      "purpose": "Map improvements.",
+      "directories": ["Leatrix_Maps"],
+      "sourceHints": ["CurseForge: Leatrix Maps"]
+    },
+    {
+      "name": "Masque",
+      "purpose": "Button skinning shared by UI addons.",
+      "directories": ["Masque"],
+      "sourceHints": ["CurseForge: Masque"]
+    },
+    {
+      "name": "MinimapButtonCollector",
+      "purpose": "Collect minimap buttons.",
+      "directories": ["MinimapButtonCollector"],
+      "sourceHints": ["CurseForge: Minimap Button Collector"]
+    },
+    {
+      "name": "NpcAbilities",
+      "purpose": "NPC ability hints; preferred replacement for outdated alternatives.",
+      "directories": ["NpcAbilities"],
+      "sourceHints": ["CurseForge: NpcAbilities"]
+    },
+    {
+      "name": "OmniCC",
+      "purpose": "Cooldown number display.",
+      "directories": ["OmniCC", "OmniCC_Config"],
+      "sourceHints": ["CurseForge: OmniCC"]
+    },
+    {
+      "name": "Parrot",
+      "purpose": "Scrolling combat text habit baseline.",
+      "directories": ["Parrot"],
+      "sourceHints": ["CurseForge: Parrot 2"]
+    },
+    {
+      "name": "Questie",
+      "purpose": "Quest helper.",
+      "directories": ["Questie"],
+      "sourceHints": ["CurseForge: Questie"]
+    },
+    {
+      "name": "ShadowedUnitFrames",
+      "purpose": "Unit frame layout and options.",
+      "directories": ["ShadowedUnitFrames", "ShadowedUF_Options"],
+      "sourceHints": ["CurseForge: Shadowed Unit Frames"]
+    },
+    {
+      "name": "SharedMedia",
+      "purpose": "Shared fonts, textures, and status bars.",
+      "directories": ["SharedMedia"],
+      "sourceHints": ["CurseForge or WowAce: SharedMedia"]
+    },
+    {
+      "name": "Skinner",
+      "purpose": "Frame skinning.",
+      "directories": ["Skinner"],
+      "sourceHints": ["CurseForge: Skinner"]
+    },
+    {
+      "name": "Syndicator",
+      "purpose": "Baganator data backend.",
+      "directories": ["Syndicator"],
+      "sourceHints": ["CurseForge: Syndicator"]
+    },
+    {
+      "name": "TacoTip",
+      "purpose": "GearScore and tooltip summary; use the TBC-compatible AcidBomb/Pilsung fork.",
+      "directories": ["TacoTip"],
+      "sourceHints": ["CurseForge: TacoTip GearScore TBC"]
+    },
+    {
+      "name": "TalentEmuX",
+      "purpose": "Talent planning and sharing.",
+      "directories": ["TalentEmuX"],
+      "sourceHints": ["GitHub: alexqu0822/TalentEmu"]
+    },
+    {
+      "name": "TomTom",
+      "purpose": "Waypoint support.",
+      "directories": ["TomTom"],
+      "sourceHints": ["CurseForge: TomTom"]
+    },
+    {
+      "name": "TotemTimers",
+      "purpose": "Shaman totem and class utility timers.",
+      "directories": ["TotemTimers"],
+      "sourceHints": ["CurseForge: TotemTimers Classic"]
+    },
+    {
+      "name": "TrinketMenu",
+      "purpose": "Trinket swap UI.",
+      "directories": ["TrinketMenu"],
+      "sourceHints": ["GitHub: Resike/TrinketMenu"]
+    },
+    {
+      "name": "VendorPrice",
+      "purpose": "Vendor sell price in tooltips.",
+      "directories": ["VendorPrice"],
+      "sourceHints": ["CurseForge: Vendor Price"]
+    }
+  ]
+}

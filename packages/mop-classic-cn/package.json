@@ -1,0 +1,74 @@
+{
+  "versionKey": "mop-classic-cn",
+  "displayName": "WoW China Mists of Pandaria Classic",
+  "interface": 50504,
+  "gameDirectoryName": "_classic_",
+  "status": "experimental",
+  "workspaceAddons": [
+    {
+      "name": "AutyanCore",
+      "enabled": true,
+      "repoEnv": "AUTYANCORE_REPO",
+      "repoPath": "../autyan-wow-core",
+      "remote": "git@github.com:autyan/autyan-wow-core.git",
+      "build": ["scripts/build.sh", "mop-classic-cn"],
+      "artifact": "build/dist/mop-classic-cn/AutyanCore"
+    },
+    {
+      "name": "Venari",
+      "enabled": false,
+      "repoEnv": "VENARI_REPO",
+      "repoPath": "../venari-wow-plugin",
+      "remote": "git@github.com:autyan/venari-wow-plugin.git",
+      "reason": "Venari is hunter/TBC-oriented today; add a MoP build target in the Venari repo before enabling it here."
+    }
+  ],
+  "thirdPartyAddons": [
+    {
+      "name": "DBM",
+      "purpose": "Boss warnings. Use official independent DBM packages only.",
+      "directories": [
+        "DBM-Challenges",
+        "DBM-Core",
+        "DBM-GUI",
+        "DBM-Pandaria",
+        "DBM-Party-MoP",
+        "DBM-Raids-MoP",
+        "DBM-Scenario-MoP",
+        "DBM-StatusBarTimers",
+        "DBM-VPVEM",
+        "DBM-WorldEvents"
+      ],
+      "sourceHints": [
+        "CurseForge: Deadly Boss Mods",
+        "CurseForge: Deadly Boss Mods MoP",
+        "CurseForge: Deadly Boss Mods Dungeons"
+      ],
+      "avoidMarkers": ["BigFoot", "BigFoot_UI", "X-Revision: BigFoot", "Dependencies: BigFoot"]
+    },
+    {
+      "name": "Leatrix_Maps",
+      "purpose": "Map improvements.",
+      "directories": ["Leatrix_Maps"],
+      "sourceHints": ["CurseForge: Leatrix Maps"]
+    },
+    {
+      "name": "NpcAbilities",
+      "purpose": "NPC ability hints.",
+      "directories": ["NpcAbilities"],
+      "sourceHints": ["CurseForge: NpcAbilities"]
+    },
+    {
+      "name": "TacoTip",
+      "purpose": "GearScore and tooltip summary; use a MoP-compatible fork.",
+      "directories": ["TacoTip"],
+      "sourceHints": ["CurseForge: TacoTip for MoP"]
+    },
+    {
+      "name": "TotemTimers",
+      "purpose": "Shaman totem and class utility timers.",
+      "directories": ["TotemTimers"],
+      "sourceHints": ["CurseForge: TotemTimers Classic"]
+    }
+  ]
+}

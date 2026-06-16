@@ -514,6 +514,9 @@ local function hideCharacterEquipmentPanels()
     if parent.AutyanEquipmentPanel.statsPanel then
       parent.AutyanEquipmentPanel.statsPanel:Hide()
     end
+    if parent.AutyanEquipmentPanel.outfitPanel then
+      parent.AutyanEquipmentPanel.outfitPanel:Hide()
+    end
     parent.AutyanEquipmentPanel:Hide()
   end
   if PaperDollFrame and PaperDollFrame.AutyanRepairMoneyFrame then
@@ -693,6 +696,253 @@ local function createEquipmentPanel(parent)
   return frame
 end
 
+local function outfitEnabled()
+  return AutyanCore_IsOutfitSwitcherEnabled and AutyanCore_IsOutfitSwitcherEnabled()
+end
+
+local function outfitCount()
+  return AutyanCore_GetSavedOutfitCount and AutyanCore_GetSavedOutfitCount() or 0
+end
+
+local function outfitByIndex(index)
+  return AutyanCore_GetSavedOutfit and AutyanCore_GetSavedOutfit(index)
+end
+
+local function selectedOutfit(panel)
+  if not panel or not panel.selectedOutfitName then
+    return nil
+  end
+  return AutyanCore_FindSavedOutfit and AutyanCore_FindSavedOutfit(panel.selectedOutfitName)
+end
+
+local function refreshOutfitPanel(panel)
+  if not panel or not panel.outfitPanel then
+    return
+  end
+
+  local outfit = panel.outfitPanel
+  if not outfitEnabled() or panel.unit ~= "player" then
+    outfit:Hide()
+    return
+  end
+
+  local count = outfitCount()
+  if count > 0 and (not panel.selectedOutfitName or not selectedOutfit(panel)) then
+    local first = outfitByIndex(1)
+    panel.selectedOutfitName = first and first.name
+  end
+
+  if count == 0 then
+    outfit.empty:Show()
+  else
+    outfit.empty:Hide()
+  end
+  for index, row in ipairs(outfit.rows) do
+    local set = outfitByIndex(index)
+    if set then
+      row.setName = set.name
+      row.text:SetText(set.name)
+      row:Show()
+      if panel.selectedOutfitName == set.name then
+        row.bg:SetVertexColor(0.08, 0.46, 0.56, 0.72)
+      else
+        row.bg:SetVertexColor(0.08, 0.18, 0.14, index % 2 == 1 and 0.38 or 0.18)
+      end
+    else
+      row.setName = nil
+      row:Hide()
+    end
+  end
+
+  local set = selectedOutfit(panel)
+  outfit.detailName:SetText(set and set.name or "未选择")
+  if set then
+    local missing = AutyanCore_GetSavedOutfitMissingItems and AutyanCore_GetSavedOutfitMissingItems(set) or {}
+    local missingCount = #missing
+    outfit.detailInfo:SetFormattedText("%d 个槽位%s", set.equippedCount or 0, missingCount > 0 and ("，缺 " .. missingCount) or "")
+    outfit.delete:SetEnabled(true)
+    outfit.overwrite:SetEnabled(true)
+  else
+    outfit.detailInfo:SetText(count == 0 and "保存当前装备以创建记录" or "")
+    outfit.delete:SetEnabled(false)
+    outfit.overwrite:SetEnabled(false)
+  end
+
+  outfit.saveMenu:Hide()
+  outfit:Show()
+end
+
+local function showOutfitNamePopup(dialogName, title, value, callback)
+  if not StaticPopupDialogs or not StaticPopup_Show then
+    printMsg("当前客户端不支持输入弹窗。")
+    return
+  end
+
+  StaticPopupDialogs[dialogName] = {
+    text = title,
+    button1 = ACCEPT or "确定",
+    button2 = CANCEL or "取消",
+    hasEditBox = true,
+    maxLetters = 24,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    OnShow = function(self)
+      local editBox = self.editBox or _G[self:GetName() .. "EditBox"]
+      if editBox then
+        editBox:SetText(value or "")
+        editBox:HighlightText()
+        editBox:SetFocus()
+      end
+    end,
+    OnAccept = function(self)
+      local editBox = self.editBox or _G[self:GetName() .. "EditBox"]
+      if callback then
+        callback(editBox and editBox:GetText() or "")
+      end
+    end,
+    EditBoxOnEnterPressed = function(self)
+      local parent = self:GetParent()
+      if parent.button1 then
+        parent.button1:Click()
+      end
+    end,
+    EditBoxOnEscapePressed = function(self)
+      self:GetParent():Hide()
+    end,
+  }
+  StaticPopup_Show(dialogName)
+end
+
+local function createOutfitPanel(panel)
+  if panel.outfitPanel then
+    return panel.outfitPanel
+  end
+
+  local frame = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+  frame:SetSize(220, 120)
+  frame:SetBackdrop({
+    bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true,
+    tileSize = 8,
+    edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 },
+  })
+  frame:SetBackdropColor(0, 0, 0, 0.82)
+  frame:SetBackdropBorderColor(0.45, 0.75, 0.45, 1)
+
+  frame.title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+  frame.title:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -10)
+  frame.title:SetText("换装")
+
+  frame.empty = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  frame.empty:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -38)
+  frame.empty:SetSize(84, 34)
+  frame.empty:SetJustifyH("LEFT")
+  frame.empty:SetText("暂无记录")
+
+  frame.rows = {}
+  local previous
+  for index = 1, 4 do
+    local row = CreateFrame("Button", nil, frame)
+    row:SetSize(92, 18)
+    if previous then
+      row:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -1)
+    else
+      row:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -30)
+    end
+    row.bg = row:CreateTexture(nil, "BACKGROUND")
+    row.bg:SetAllPoints(row)
+    row.bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+    row.text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    row.text:SetPoint("LEFT", row, "LEFT", 6, 0)
+    row.text:SetWidth(80)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(false)
+    row:SetScript("OnEnter", function(self)
+      panel.selectedOutfitName = self.setName
+      refreshOutfitPanel(panel)
+    end)
+    row:SetScript("OnClick", function(self)
+      if self.setName and AutyanCore_EquipSavedOutfit then
+        AutyanCore_EquipSavedOutfit(self.setName)
+      end
+    end)
+    frame.rows[index] = row
+    previous = row
+  end
+
+  frame.detailName = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+  frame.detailName:SetPoint("TOPLEFT", frame, "TOPLEFT", 114, -30)
+  frame.detailName:SetWidth(88)
+  frame.detailName:SetJustifyH("LEFT")
+  frame.detailName:SetWordWrap(false)
+
+  frame.detailInfo = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  frame.detailInfo:SetPoint("TOPLEFT", frame.detailName, "BOTTOMLEFT", 0, -2)
+  frame.detailInfo:SetSize(88, 28)
+  frame.detailInfo:SetJustifyH("LEFT")
+
+  frame.save = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.save:SetSize(44, 20)
+  frame.save:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 112, 12)
+  frame.save:SetText("保存")
+  frame.save:SetScript("OnClick", function()
+    if frame.saveMenu:IsShown() then
+      frame.saveMenu:Hide()
+    else
+      frame.saveMenu:Show()
+    end
+  end)
+
+  frame.delete = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.delete:SetSize(44, 20)
+  frame.delete:SetPoint("LEFT", frame.save, "RIGHT", 4, 0)
+  frame.delete:SetText("删除")
+  frame.delete:SetScript("OnClick", function()
+    local set = selectedOutfit(panel)
+    if set and AutyanCore_DeleteSavedOutfit then
+      AutyanCore_DeleteSavedOutfit(set.name)
+    end
+  end)
+
+  frame.saveMenu = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+  frame.saveMenu:SetSize(88, 26)
+  frame.saveMenu:SetPoint("BOTTOMLEFT", frame.save, "TOPLEFT", 0, 2)
+  frame.saveMenu:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
+  frame.saveMenu:SetBackdropColor(0, 0, 0, 0.9)
+
+  frame.new = CreateFrame("Button", nil, frame.saveMenu, "UIPanelButtonTemplate")
+  frame.new:SetSize(40, 20)
+  frame.new:SetPoint("LEFT", frame.saveMenu, "LEFT", 2, 0)
+  frame.new:SetText("新建")
+  frame.new:SetScript("OnClick", function()
+    frame.saveMenu:Hide()
+    showOutfitNamePopup("AUTYANCORE_NEW_OUTFIT", "保存当前装备为", UnitName("player") or "", function(name)
+      if AutyanCore_SaveCurrentOutfit then
+        AutyanCore_SaveCurrentOutfit(name)
+      end
+    end)
+  end)
+
+  frame.overwrite = CreateFrame("Button", nil, frame.saveMenu, "UIPanelButtonTemplate")
+  frame.overwrite:SetSize(40, 20)
+  frame.overwrite:SetPoint("LEFT", frame.new, "RIGHT", 4, 0)
+  frame.overwrite:SetText("覆盖")
+  frame.overwrite:SetScript("OnClick", function()
+    frame.saveMenu:Hide()
+    local set = selectedOutfit(panel)
+    if set and AutyanCore_SaveCurrentOutfit then
+      AutyanCore_SaveCurrentOutfit(set.name)
+    end
+  end)
+
+  frame.saveMenu:Hide()
+  panel.outfitPanel = frame
+  return frame
+end
+
 local function positionEquipmentPanel(panel, parent, showStats)
   if not panel or not parent then
     return
@@ -701,6 +951,9 @@ local function positionEquipmentPanel(panel, parent, showStats)
   panel:ClearAllPoints()
   if panel.statsPanel then
     panel.statsPanel:ClearAllPoints()
+  end
+  if panel.outfitPanel then
+    panel.outfitPanel:ClearAllPoints()
   end
 
   local uiWidth = UIParent and UIParent:GetWidth()
@@ -712,10 +965,16 @@ local function positionEquipmentPanel(panel, parent, showStats)
     if showStats and panel.statsPanel then
       panel.statsPanel:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -2)
     end
+    if panel.outfitPanel then
+      panel.outfitPanel:SetPoint("TOPLEFT", (showStats and panel.statsPanel) or panel, "BOTTOMLEFT", 0, -2)
+    end
   else
     panel:SetPoint("TOPLEFT", parent, "TOPRIGHT", 0, 0)
     if showStats and panel.statsPanel then
       panel.statsPanel:SetPoint("TOPLEFT", panel, "TOPRIGHT", 0, -1)
+    end
+    if panel.outfitPanel then
+      panel.outfitPanel:SetPoint("TOPLEFT", (showStats and panel.statsPanel) or panel, "BOTTOMLEFT", 0, -2)
     end
   end
 end
@@ -738,6 +997,11 @@ local function prepareEquipmentPanel(parent, unit)
   elseif panel.statsPanel then
     panel.statsPanel:Hide()
   end
+  if showStats then
+    createOutfitPanel(panel)
+  elseif panel.outfitPanel then
+    panel.outfitPanel:Hide()
+  end
   positionEquipmentPanel(panel, parent, showStats)
   local unitName = UnitName(unit) or (unit == "player" and UnitName("player")) or "Unknown"
   local profile = selectStatProfile(unit)
@@ -750,6 +1014,10 @@ local function prepareEquipmentPanel(parent, unit)
   panel:SetBackdropBorderColor(classColor.r, classColor.g, classColor.b, 1)
   if panel.statsPanel then
     panel.statsPanel:SetBackdropBorderColor(classColor.r, classColor.g, classColor.b, 1)
+  end
+  if panel.outfitPanel then
+    panel.outfitPanel:SetBackdropBorderColor(classColor.r, classColor.g, classColor.b, 1)
+    refreshOutfitPanel(panel)
   end
   SetPortraitTexture(panel.portrait, unit)
 
@@ -814,6 +1082,7 @@ local function updateSummary(panel, profile, unit, totalStats, total, count, max
   end
 
   statsPanel:SetHeight(70 + math.max(#statKeys, 1) * 15)
+  positionEquipmentPanel(panel, panel:GetParent(), true)
   statsPanel:Show()
   panel:Show()
 end

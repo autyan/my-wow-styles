@@ -23,6 +23,11 @@ local defaults = {
     barPosition = nil,
     keywords = {},
   },
+  outfitSwitcher = {
+    enabled = true,
+    sets = {},
+    order = {},
+  },
   taintLogEnabled = true,
 }
 
@@ -335,6 +340,7 @@ local copyHistory = {}
 local chatAssistantFilterInstalled
 local configUI
 local updateChatSwitchBar
+local updateOutfitSwitchBar
 local showCopyPanel
 local installChatMouseCopyHooks
 
@@ -1256,6 +1262,303 @@ updateChatSwitchBar = function()
   end
 end
 
+local outfitSlotIDs = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
+
+local function outfitDb()
+  local cfg = db().outfitSwitcher
+  cfg.sets = cfg.sets or {}
+  cfg.order = cfg.order or {}
+  return cfg
+end
+
+local function trimText(value)
+  return (value or ""):match("^%s*(.-)%s*$") or ""
+end
+
+local function savedOutfitSetCount()
+  local cfg = outfitDb()
+  local count = 0
+  for _, name in ipairs(cfg.order) do
+    if cfg.sets[name] then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+local function getSavedOutfitByIndex(index)
+  local cfg = outfitDb()
+  local found = 0
+  for _, name in ipairs(cfg.order) do
+    local set = cfg.sets[name]
+    if set then
+      found = found + 1
+      if found == index then
+        return set
+      end
+    end
+  end
+  return nil
+end
+
+local function findSavedOutfit(name)
+  name = trimText(name)
+  if name == "" then
+    return nil
+  end
+
+  local cfg = outfitDb()
+  if cfg.sets[name] then
+    return cfg.sets[name]
+  end
+
+  local lowerName = name:lower()
+  for _, savedName in ipairs(cfg.order) do
+    local set = cfg.sets[savedName]
+    if set and savedName:lower() == lowerName then
+      return set
+    end
+  end
+  for _, savedName in ipairs(cfg.order) do
+    local set = cfg.sets[savedName]
+    if set and savedName:lower():find(lowerName, 1, true) then
+      return set
+    end
+  end
+  return nil
+end
+
+local function saveCurrentOutfit(name)
+  name = trimText(name)
+  if name == "" then
+    printMsg("请输入换装记录名称。")
+    return false
+  end
+
+  local slots = {}
+  local equippedCount = 0
+  for _, slot in ipairs(outfitSlotIDs) do
+    local link = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+    if link then
+      slots[slot] = {
+        link = link,
+        itemID = GetInventoryItemID and GetInventoryItemID("player", slot),
+      }
+      equippedCount = equippedCount + 1
+    end
+  end
+
+  if equippedCount == 0 then
+    printMsg("当前没有可记录的装备。")
+    return false
+  end
+
+  local cfg = outfitDb()
+  local exists = cfg.sets[name] ~= nil
+  cfg.sets[name] = {
+    name = name,
+    slots = slots,
+    equippedCount = equippedCount,
+    updatedAt = time and time() or 0,
+  }
+  if not exists then
+    cfg.order[#cfg.order + 1] = name
+  end
+
+  if updateOutfitSwitchBar then
+    updateOutfitSwitchBar()
+  end
+  if AutyanCore_RefreshEquipmentInfo then
+    AutyanCore_RefreshEquipmentInfo()
+  end
+  printMsg(("saved outfit: %s (%d slots)"):format(name, equippedCount))
+  return true
+end
+
+local function deleteSavedOutfit(name)
+  local set = findSavedOutfit(name)
+  if not set then
+    printMsg("saved outfit not found: " .. tostring(name))
+    return false
+  end
+
+  local cfg = outfitDb()
+  cfg.sets[set.name] = nil
+  for index = #cfg.order, 1, -1 do
+    if cfg.order[index] == set.name then
+      table.remove(cfg.order, index)
+    end
+  end
+  if updateOutfitSwitchBar then
+    updateOutfitSwitchBar()
+  end
+  if AutyanCore_RefreshEquipmentInfo then
+    AutyanCore_RefreshEquipmentInfo()
+  end
+  printMsg("deleted outfit: " .. set.name)
+  return true
+end
+
+local function getOutfitItemLabel(entry)
+  if not entry then
+    return "未知装备"
+  end
+  if entry.link then
+    return entry.link:match("%[(.-)%]") or entry.link
+  end
+  return tostring(entry.itemID or "未知装备")
+end
+
+local function slotHasSavedOutfitItem(slot, entry)
+  if not entry then
+    return false
+  end
+  local currentLink = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+  if currentLink and entry.link and currentLink == entry.link then
+    return true
+  end
+  local currentID = GetInventoryItemID and GetInventoryItemID("player", slot)
+  return currentID and entry.itemID and currentID == entry.itemID
+end
+
+local function savedOutfitItemAvailable(entry)
+  if not entry then
+    return false
+  end
+  for _, slot in ipairs(outfitSlotIDs) do
+    if slotHasSavedOutfitItem(slot, entry) then
+      return true
+    end
+  end
+  if GetItemCount then
+    local count = GetItemCount(entry.link or entry.itemID or 0, false, false) or 0
+    return count > 0
+  end
+  return true
+end
+
+local function equipSavedOutfit(set)
+  if not set then
+    printMsg("saved outfit not found")
+    return false
+  end
+  if inCombat() then
+    printMsg("战斗中不能换装。")
+    return false
+  end
+  if not EquipItemByName then
+    printMsg("当前客户端不支持按槽位换装。")
+    return false
+  end
+
+  local equippedCount = 0
+  local skippedCount = 0
+  local missing = {}
+  local failed = {}
+  for _, slot in ipairs(outfitSlotIDs) do
+    local entry = set.slots and (set.slots[slot] or set.slots[tostring(slot)])
+    if entry and entry.link then
+      if slotHasSavedOutfitItem(slot, entry) then
+        skippedCount = skippedCount + 1
+      elseif savedOutfitItemAvailable(entry) then
+        local ok = pcall(EquipItemByName, entry.link, slot)
+        if ok then
+          equippedCount = equippedCount + 1
+        else
+          failed[#failed + 1] = getOutfitItemLabel(entry)
+        end
+      else
+        missing[#missing + 1] = getOutfitItemLabel(entry)
+      end
+    end
+  end
+
+  if equippedCount > 0 or skippedCount > 0 then
+    printMsg(("equipped saved outfit: %s (%d changed, %d already equipped)"):format(set.name, equippedCount, skippedCount))
+    after(0.5, function()
+      if updateOutfitSwitchBar then
+        updateOutfitSwitchBar()
+      end
+      if AutyanCore_RefreshEquipmentInfo then
+        AutyanCore_RefreshEquipmentInfo()
+      end
+    end)
+  else
+    printMsg("saved outfit has no available slots: " .. tostring(set.name))
+  end
+
+  if #missing > 0 then
+    printMsg(("缺少记录装备：%s%s"):format(table.concat(missing, "、", 1, math.min(#missing, 4)), #missing > 4 and " 等" or ""))
+  end
+  if #failed > 0 then
+    printMsg(("换装失败：%s%s"):format(table.concat(failed, "、", 1, math.min(#failed, 4)), #failed > 4 and " 等" or ""))
+  end
+
+  return equippedCount > 0 or skippedCount > 0
+end
+
+local function getSavedOutfitMissingItems(set)
+  local missing = {}
+  if not set or not set.slots then
+    return missing
+  end
+  for _, slot in ipairs(outfitSlotIDs) do
+    local entry = set.slots[slot] or set.slots[tostring(slot)]
+    if entry and entry.link and not slotHasSavedOutfitItem(slot, entry) and not savedOutfitItemAvailable(entry) then
+      missing[#missing + 1] = getOutfitItemLabel(entry)
+    end
+  end
+  return missing
+end
+
+updateOutfitSwitchBar = function()
+end
+
+local function setOutfitFlag(key, value)
+  outfitDb()[key] = value and true or false
+  if updateOutfitSwitchBar then
+    updateOutfitSwitchBar()
+  end
+  if AutyanCore_RefreshEquipmentInfo then
+    AutyanCore_RefreshEquipmentInfo()
+  end
+  if configUI.refresh then
+    configUI.refresh()
+  end
+end
+
+function AutyanCore_IsOutfitSwitcherEnabled()
+  return outfitDb().enabled and true or false
+end
+
+function AutyanCore_GetSavedOutfitCount()
+  return savedOutfitSetCount()
+end
+
+function AutyanCore_GetSavedOutfit(index)
+  return getSavedOutfitByIndex(index)
+end
+
+function AutyanCore_FindSavedOutfit(name)
+  return findSavedOutfit(name)
+end
+
+function AutyanCore_SaveCurrentOutfit(name)
+  return saveCurrentOutfit(name)
+end
+
+function AutyanCore_DeleteSavedOutfit(name)
+  return deleteSavedOutfit(name)
+end
+
+function AutyanCore_EquipSavedOutfit(name)
+  return equipSavedOutfit(findSavedOutfit(name))
+end
+
+function AutyanCore_GetSavedOutfitMissingItems(name)
+  return getSavedOutfitMissingItems(type(name) == "table" and name or findSavedOutfit(name))
+end
+
 local function clearTaintEvents()
   db().taintEvents = {}
 end
@@ -1381,7 +1684,7 @@ local function createConfigFrame()
   configUI.editBoxes = {}
 
   local frame = CreateFrame("Frame", "AutyanCoreConfigFrame", UIParent)
-  frame:SetSize(560, 430)
+  frame:SetSize(560, 500)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("DIALOG")
   frame:SetMovable(true)
@@ -1447,21 +1750,22 @@ local function createConfigFrame()
   makeConfigCheckbox(frame, "AutyanCoreCfgChatHighlight", "关键词高亮", function() return chatAssistantDb().keywordHighlight end, function(value) setChatAssistantFlag("keywordHighlight", value) end, 28, -274)
   makeConfigCheckbox(frame, "AutyanCoreCfgChatCopy", "聊天复制面板", function() return chatAssistantDb().copyLinks end, function(value) setChatAssistantFlag("copyLinks", value) end, 28, -306)
   makeConfigCheckbox(frame, "AutyanCoreCfgChatBar", "频道切换按钮", function() return chatAssistantDb().channelBar end, function(value) setChatAssistantFlag("channelBar", value) end, 158, -306)
-  makeConfigCheckbox(frame, "AutyanCoreCfgTaint", "记录 taint 日志", coreGetter("taintLogEnabled"), function(value) setCoreFlag("taintLogEnabled", value) end, 300, -306)
+  makeConfigCheckbox(frame, "AutyanCoreCfgTaint", "记录 taint 日志", coreGetter("taintLogEnabled"), function(value) setCoreFlag("taintLogEnabled", value) end, 28, -338)
+  makeConfigCheckbox(frame, "AutyanCoreCfgOutfitEnabled", "一键换装", function() return outfitDb().enabled end, function(value) setOutfitFlag("enabled", value) end, 300, -306)
 
   local fpsTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  fpsTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 30, -346)
+  fpsTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 30, -378)
   fpsTitle:SetText("FPS 位置")
   fpsTitle:SetTextColor(0.86, 0.94, 1, 1)
-  makeConfigEditBox(frame, "AutyanCoreCfgFPSX", "X", function() return db().fps.x end, function(value) setFPSCoordinate("x", value) end, 30, -374)
-  makeConfigEditBox(frame, "AutyanCoreCfgFPSY", "Y", function() return db().fps.y end, function(value) setFPSCoordinate("y", value) end, 158, -374)
+  makeConfigEditBox(frame, "AutyanCoreCfgFPSX", "X", function() return db().fps.x end, function(value) setFPSCoordinate("x", value) end, 30, -406)
+  makeConfigEditBox(frame, "AutyanCoreCfgFPSY", "Y", function() return db().fps.y end, function(value) setFPSCoordinate("y", value) end, 158, -406)
 
   local chatBarTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  chatBarTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, -346)
+  chatBarTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", 300, -378)
   chatBarTitle:SetText("频道按钮位置")
   chatBarTitle:SetTextColor(0.86, 0.94, 1, 1)
-  makeConfigEditBox(frame, "AutyanCoreCfgChatBarX", "X", function() return getChatSwitchBarCoordinate("x") end, function(value) setChatSwitchBarCoordinate("x", value) end, 300, -374)
-  makeConfigEditBox(frame, "AutyanCoreCfgChatBarY", "Y", function() return getChatSwitchBarCoordinate("y") end, function(value) setChatSwitchBarCoordinate("y", value) end, 428, -374)
+  makeConfigEditBox(frame, "AutyanCoreCfgChatBarX", "X", function() return getChatSwitchBarCoordinate("x") end, function(value) setChatSwitchBarCoordinate("x", value) end, 300, -406)
+  makeConfigEditBox(frame, "AutyanCoreCfgChatBarY", "Y", function() return getChatSwitchBarCoordinate("y") end, function(value) setChatSwitchBarCoordinate("y", value) end, 428, -406)
 
   makeConfigCheckbox(frame, "AutyanCoreCfgEquipEnabled", "启用装备信息", equipGetter("enabled"), function(value) setEquipmentFlag("enabled", value) end, 300, -114)
   makeConfigCheckbox(frame, "AutyanCoreCfgEquipCharacter", "角色面板", equipGetter("characterPanel"), function(value) setEquipmentFlag("characterPanel", value) end, 300, -146)
@@ -1478,13 +1782,13 @@ local function createConfigFrame()
 
   local status = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   status:SetPoint("LEFT", frame, "BOTTOMLEFT", 18, 22)
-  status:SetSize(230, 18)
+  status:SetSize(174, 18)
   status:SetJustifyH("LEFT")
   configUI.status = status
 
   local resetChatBar = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  resetChatBar:SetSize(96, 22)
-  resetChatBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -208, 12)
+  resetChatBar:SetSize(82, 22)
+  resetChatBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -174, 12)
   resetChatBar:SetText("重置频道")
   resetChatBar:SetScript("OnClick", function()
     resetChatSwitchBarPosition()
@@ -1493,8 +1797,8 @@ local function createConfigFrame()
   end)
 
   local clearTaint = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  clearTaint:SetSize(96, 22)
-  clearTaint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -104, 12)
+  clearTaint:SetSize(82, 22)
+  clearTaint:SetPoint("LEFT", resetChatBar, "RIGHT", 8, 0)
   clearTaint:SetText("清空 taint")
   clearTaint:SetScript("OnClick", function()
     clearTaintEvents()
@@ -1503,7 +1807,7 @@ local function createConfigFrame()
   end)
 
   local done = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  done:SetSize(82, 22)
+  done:SetSize(70, 22)
   done:SetPoint("LEFT", clearTaint, "RIGHT", 8, 0)
   done:SetText("完成")
   done:SetScript("OnClick", function() frame:Hide() end)
@@ -1568,6 +1872,11 @@ local function installSocialClassColorHooks()
 end
 
 local events = CreateFrame("Frame")
+local function registerEvent(frame, event)
+  local ok = pcall(frame.RegisterEvent, frame, event)
+  return ok
+end
+
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("ADDON_LOADED")
@@ -1576,6 +1885,9 @@ events:RegisterEvent("GUILD_ROSTER_UPDATE")
 events:RegisterEvent("FRIENDLIST_UPDATE")
 events:RegisterEvent("WHO_LIST_UPDATE")
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
+registerEvent(events, "PLAYER_EQUIPMENT_CHANGED")
+registerEvent(events, "BAG_UPDATE_DELAYED")
+registerEvent(events, "EQUIPMENT_SETS_CHANGED")
 events:RegisterEvent("ADDON_ACTION_BLOCKED")
 events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 events:SetScript("OnEvent", function(_, event, ...)
@@ -1595,6 +1907,7 @@ events:SetScript("OnEvent", function(_, event, ...)
     installSocialClassColorHooks()
     after(0.5, applyFPSPosition)
     after(0.5, updateChatSwitchBar)
+    after(0.75, updateOutfitSwitchBar)
     after(1, hookPermanentAuraButtons)
     after(1, updateSocialClassColors)
     after(1, installSocialClassColorHooks)
@@ -1606,6 +1919,7 @@ events:SetScript("OnEvent", function(_, event, ...)
     installSocialClassColorHooks()
     after(0.5, applyFPSPosition)
     after(0.5, updateChatSwitchBar)
+    after(0.75, updateOutfitSwitchBar)
     after(1, hookPermanentAuraButtons)
     after(1, updateSocialClassColors)
     after(1, installSocialClassColorHooks)
@@ -1620,7 +1934,10 @@ events:SetScript("OnEvent", function(_, event, ...)
     after(0, updateSocialClassColors)
   elseif event == "FRIENDLIST_UPDATE" or event == "WHO_LIST_UPDATE" then
     after(0, updateSocialClassColors)
+  elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_UPDATE_DELAYED" or event == "EQUIPMENT_SETS_CHANGED" then
+    after(0.1, updateOutfitSwitchBar)
   elseif event == "PLAYER_REGEN_ENABLED" then
+    updateOutfitSwitchBar()
     if configDirty then
       configDirty = nil
       applyFPSPosition()
@@ -1735,7 +2052,7 @@ local function handleAutyanCommand(input)
     return
   end
 
-  printMsg("commands: /autyan config, /autyan chat, /autyan chat bar reset, /autyan chat add <keyword>, /autyan chat list, /autyan fps, /autyan fps <x> <y>, /autyan buffna on, /autyan buffna off, /autyan buffna debug, /autyan taint, /autyan taint on, /autyan taint off, /autyan taint clear, /autyan equip debug")
+  printMsg("commands: /autyan config, /autyan chat, /autyan fps, /autyan fps <x> <y>, /autyan buffna on/off/debug, /autyan taint, /autyan equip debug")
 end
 
 SlashCmdList.AUTYANCORE = function(input)

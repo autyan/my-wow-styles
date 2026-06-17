@@ -25,6 +25,33 @@
   ],
   "thirdPartyAddons": [
     {
+      "name": "AtlasLootClassic",
+      "purpose": "Dungeon, raid, PvP, reputation, collection, and profession loot lookup.",
+      "directories": [
+        "AtlasLootClassic",
+        "AtlasLootClassic_Collections",
+        "AtlasLootClassic_Crafting",
+        "AtlasLootClassic_Data",
+        "AtlasLootClassic_DungeonsAndRaids",
+        "AtlasLootClassic_Factions",
+        "AtlasLootClassic_Options",
+        "AtlasLootClassic_PvP"
+      ],
+      "sourceHints": ["CurseForge: AtlasLootClassic - MoP"]
+    },
+    {
+      "name": "Baganator",
+      "purpose": "Unified bag, bank, search, and item organization.",
+      "directories": ["Baganator"],
+      "sourceHints": ["CurseForge: Baganator"]
+    },
+    {
+      "name": "Bartender4",
+      "purpose": "Action bar layout and keybinding habits.",
+      "directories": ["Bartender4"],
+      "sourceHints": ["CurseForge: Bartender4"]
+    },
+    {
       "name": "DBM",
       "purpose": "Boss warnings. Use official independent DBM packages only.",
       "directories": [
@@ -47,10 +74,31 @@
       "avoidMarkers": ["BigFoot", "BigFoot_UI", "X-Revision: BigFoot", "Dependencies: BigFoot"]
     },
     {
+      "name": "Details",
+      "purpose": "Damage meter and threat modules.",
+      "directories": [
+        "Details",
+        "Details_Compare2",
+        "Details_DataStorage",
+        "Details_EncounterDetails",
+        "Details_RaidCheck",
+        "Details_Streamer",
+        "Details_TinyThreat",
+        "Details_Vanguard"
+      ],
+      "sourceHints": ["CurseForge: Details Damage Meter"]
+    },
+    {
       "name": "Leatrix_Maps",
       "purpose": "Map improvements.",
       "directories": ["Leatrix_Maps"],
       "sourceHints": ["CurseForge: Leatrix Maps"]
+    },
+    {
+      "name": "Masque",
+      "purpose": "Button skinning shared by UI addons.",
+      "directories": ["Masque"],
+      "sourceHints": ["CurseForge: Masque"]
     },
     {
       "name": "NpcAbilities",
@@ -59,16 +107,52 @@
       "sourceHints": ["CurseForge: NpcAbilities"]
     },
     {
+      "name": "OmniCC",
+      "purpose": "Cooldown number display.",
+      "directories": ["OmniCC", "OmniCC_Config"],
+      "sourceHints": ["CurseForge: OmniCC"]
+    },
+    {
+      "name": "Questie",
+      "purpose": "Quest helper.",
+      "directories": ["Questie"],
+      "sourceHints": ["CurseForge: Questie"]
+    },
+    {
+      "name": "ShadowedUnitFrames",
+      "purpose": "Unit frame layout and options.",
+      "directories": ["ShadowedUnitFrames", "ShadowedUF_Options"],
+      "sourceHints": ["CurseForge: Shadowed Unit Frames"]
+    },
+    {
+      "name": "Syndicator",
+      "purpose": "Baganator data backend.",
+      "directories": ["Syndicator"],
+      "sourceHints": ["CurseForge: Syndicator"]
+    },
+    {
       "name": "TacoTip",
       "purpose": "GearScore and tooltip summary; use a MoP-compatible fork.",
       "directories": ["TacoTip"],
       "sourceHints": ["CurseForge: TacoTip for MoP"]
     },
     {
+      "name": "TomTom",
+      "purpose": "Waypoint support.",
+      "directories": ["TomTom"],
+      "sourceHints": ["CurseForge: TomTom"]
+    },
+    {
       "name": "TotemTimers",
       "purpose": "Shaman totem and class utility timers.",
       "directories": ["TotemTimers"],
       "sourceHints": ["CurseForge: TotemTimers Classic"]
+    },
+    {
+      "name": "VendorPrice",
+      "purpose": "Vendor sell price in tooltips.",
+      "directories": ["VendorPrice"],
+      "sourceHints": ["CurseForge: Vendor Price"]
     }
   ]
 }

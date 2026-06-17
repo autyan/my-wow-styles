@@ -6,10 +6,13 @@ local workspace addons, checks local third-party snapshots, and syncs selected
 directories into game folders.
 
 Third-party addons are not downloaded by these scripts and are not vendored in
-this repository. During research, prefer recommending project pages and search
-terms. During migration, put the already downloaded or archived addon directories
-under `snapshots/<version>/Interface/AddOns/`, then run the local precheck and
-sync scripts.
+this repository. Use any suitable external addon platform or tool to install and
+update them. This repository records the selected addon set, generated or staged
+configuration, and minimal local patches for specific upstream addon versions.
+
+During migration, put already downloaded or archived addon directories under
+`snapshots/<version>/Interface/AddOns/`, then run the local precheck and sync
+scripts.
 
 ## Repositories
 
@@ -37,6 +40,18 @@ Each manifest has two roles:
 The manifest deliberately avoids direct archive URLs. File IDs and direct zip
 links are brittle; the durable value is remembering the selected addon set and
 the directory layout needed for restore.
+
+## Third-Party Patches
+
+Local compatibility fixes live under:
+
+```text
+patches/<version-key>/<AddonName>/<addon-version>/
+```
+
+Patch directories are bound to the addon version named by their manifest. When
+an external updater replaces the addon, re-check the patch against the new
+version instead of applying an older patch implicitly.
 
 ## Workspace Build
 

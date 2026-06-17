@@ -13,7 +13,7 @@ ShadowedUFDB = {
 ["pet"] = true,
 ["target"] = true,
 ["focus"] = true,
-["cast"] = false,
+["cast"] = true,
 },
 ["powerColors"] = {
 ["FUEL"] = {

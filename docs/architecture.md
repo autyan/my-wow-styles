@@ -23,6 +23,11 @@ The project separates UI intent from addon implementation.
    - Stored under `configs/<version-key>/<profile-name>/`.
    - These are files that can be copied into `WTF/Account/.../SavedVariables`.
 
+5. Third-party addon patches
+   - Stored under `patches/<version-key>/<AddonName>/<addon-version>/`.
+   - These are minimal local compatibility patches for a specific upstream
+     addon version downloaded by an external platform or tool.
+
 ## Current Renderer
 
 The first renderer is implemented in `scripts/render-layout.py`.
@@ -64,3 +69,4 @@ the renderer deliberately preserves the rest of the existing profile.
 
 See `docs/addon-rendering-principles.md` for the current rendering mechanism
 research and design rules.
+See `docs/patches.md` for third-party addon patch ownership rules.

@@ -1,0 +1,64 @@
+diff --git a/ShadowedUnitFrames.lua b/ShadowedUnitFrames.lua
+index 23020c3..69f9f09 100644
+--- a/ShadowedUnitFrames.lua
++++ b/ShadowedUnitFrames.lua
+@@ -687,29 +687,33 @@ end
+ local function basicHideBlizzardFrames(...)
+ 	for i=1, select("#", ...) do
+ 		local frame = select(i, ...)
+-		frame:UnregisterAllEvents()
+-		frame:HookScript("OnShow", rehideFrame)
+-		frame:Hide()
++		if( frame ) then
++			frame:UnregisterAllEvents()
++			frame:HookScript("OnShow", rehideFrame)
++			frame:Hide()
++		end
+ 	end
+ end
+ 
+ local function hideBlizzardFrames(taint, ...)
+ 	for i=1, select("#", ...) do
+ 		local frame = select(i, ...)
+-		UnregisterUnitWatch(frame)
+-		frame:UnregisterAllEvents()
+-		frame:Hide()
+-
+-		if( frame.manabar ) then frame.manabar:UnregisterAllEvents() end
+-		if( frame.healthbar ) then frame.healthbar:UnregisterAllEvents() end
+-		if( frame.spellbar ) then frame.spellbar:UnregisterAllEvents() end
+-		if( frame.powerBarAlt ) then frame.powerBarAlt:UnregisterAllEvents() end
+-
+-		if( taint ) then
+-			frame.Show = ShadowUF.noop
+-		else
+-			frame:SetParent(ShadowUF.hiddenFrame)
+-			frame:HookScript("OnShow", rehideFrame)
++		if( frame ) then
++			UnregisterUnitWatch(frame)
++			frame:UnregisterAllEvents()
++			frame:Hide()
++
++			if( frame.manabar ) then frame.manabar:UnregisterAllEvents() end
++			if( frame.healthbar ) then frame.healthbar:UnregisterAllEvents() end
++			if( frame.spellbar ) then frame.spellbar:UnregisterAllEvents() end
++			if( frame.powerBarAlt ) then frame.powerBarAlt:UnregisterAllEvents() end
++
++			if( taint ) then
++				frame.Show = ShadowUF.noop
++			else
++				frame:SetParent(ShadowUF.hiddenFrame)
++				frame:HookScript("OnShow", rehideFrame)
++			end
+ 		end
+ 	end
+ end
+@@ -717,7 +721,7 @@ end
+ local active_hiddens = {}
+ function ShadowUF:HideBlizzardFrames()
+ 	if( self.db.profile.hidden.cast and not active_hiddens.cast ) then
+-		hideBlizzardFrames(true, CastingBarFrame, PetCastingBarFrame)
++		hideBlizzardFrames(true, CastingBarFrame, PlayerCastingBarFrame, PetCastingBarFrame)
+ 	end
+ 
+ 	if( self.db.profile.hidden.party and not active_hiddens.party ) then

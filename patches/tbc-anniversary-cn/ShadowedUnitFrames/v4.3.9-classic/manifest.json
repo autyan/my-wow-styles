@@ -1,0 +1,8 @@
+{
+  "versionKey": "tbc-anniversary-cn",
+  "addon": "ShadowedUnitFrames",
+  "addonVersion": "v4.3.9-classic",
+  "directories": ["ShadowedUnitFrames", "ShadowedUF_Options"],
+  "reason": "Make SUF's built-in Blizzard cast bar hiding safe on TBC Anniversary clients.",
+  "patches": ["hide-blizzard-castbar.patch"]
+}

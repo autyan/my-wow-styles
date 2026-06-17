@@ -14,7 +14,7 @@ ShadowedUFDB = {
 ["pet"] = true,
 ["target"] = true,
 ["focus"] = true,
-["cast"] = false,
+["cast"] = true,
 },
 ["positions"] = {
 ["player"] = {

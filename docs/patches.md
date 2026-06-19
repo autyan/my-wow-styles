@@ -28,6 +28,7 @@ Current patch:
   Blizzard cast bar hiding skip nil frames and include `PlayerCastingBarFrame`
   on TBC Anniversary clients.
 - `tbc-anniversary-cn/TacoTip/v0.4.7`: makes item tooltips prefer
-  `C_Item.GetDetailedItemLevelInfo` over `GetItemInfo`'s base level so TBC
-  Anniversary equipment, especially jewelry and trinkets, shows the real item
-  level.
+  `C_Item.GetDetailedItemLevelInfo` over `GetItemInfo`'s base level and hooks
+  tooltip setter methods in the BigFoot style, so TBC Anniversary equipment
+  tooltips show item level from equipped slots, bags, comparison panes, and item
+  links.

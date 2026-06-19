@@ -1,7 +1,15 @@
 --- a/main.lua
 +++ b/main.lua
-@@ -394,6 +394,12 @@
-     if (itemLink and IsEquippableItem(itemLink)) then
+@@ -391,33 +391,87 @@
+ 
+ local function itemToolTipHook(self)
+     local _, itemLink = self:GetItem()
+-    if (itemLink and IsEquippableItem(itemLink)) then
++    if (itemLink) then
++        if (self.TacoTipItemInfoLink == itemLink) then
++            return
++        end
++        local addedInfo
          if (TacoTipConfig.show_item_level) then
              local ilvl = select(4, GetItemInfo(itemLink))
 +            if (C_Item and C_Item.GetDetailedItemLevelInfo) then
@@ -12,4 +20,76 @@
 +            end
              if (ilvl and ilvl > 1) then
                  self:AddLine(L["Item Level"].." "..ilvl, 1, 1, 1)
++                addedInfo = true
              end
+         end
+         if (TacoTipConfig.show_gs_items) then
+             local gs, _, r, g, b = GearScore:GetItemScore(itemLink)
+             if (gs and gs > 1) then
+                 self:AddLine("GearScore: "..gs, r, g, b)
++                addedInfo = true
+                 if (TacoTipConfig.show_gs_items_hs or IsModifierKeyDown() or playerClass == "HUNTER" or 
+                     (InspectFrame and InspectFrame:IsShown() and InspectFrame.unit and select(2, UnitClass(InspectFrame.unit)) == "HUNTER")) then
+                     local hs, _, r, g, b = GearScore:GetItemHunterScore(itemLink)
+                     if (gs ~= hs) then
+                         self:AddLine("HunterScore: "..hs, r, g, b)
++                        addedInfo = true
+                     end
+                 end
+             end
+         end
++        if (addedInfo) then
++            self.TacoTipItemInfoLink = itemLink
++            self:Show()
++        end
++    end
++end
++
++local function itemTooltipClearedHook(self)
++    self.TacoTipItemInfoLink = nil
++end
++
++local itemTooltipMethods = {
++    "SetHyperlink",
++    "SetBagItem",
++    "SetInventoryItem",
++    "SetAuctionItem",
++    "SetAuctionSellItem",
++    "SetLootItem",
++    "SetLootRollItem",
++    "SetInboxItem",
++    "SetSendMailItem",
++    "SetQuestItem",
++    "SetQuestLogItem",
++    "SetTradePlayerItem",
++    "SetTradeTargetItem",
++    "SetMerchantItem",
++    "SetBuybackItem",
++    "SetSocketGem",
++    "SetExistingSocketGem",
++    "SetCompareItem",
++    "SetGuildBankItem",
++}
++
++local function hookItemTooltip(tooltip)
++    if (not tooltip) then return end
++    tooltip:HookScript("OnTooltipSetItem", itemToolTipHook)
++    tooltip:HookScript("OnTooltipCleared", itemTooltipClearedHook)
++    for _, method in ipairs(itemTooltipMethods) do
++        if (tooltip[method]) then
++            hooksecurefunc(tooltip, method, itemToolTipHook)
++        end
+     end
+ end
+ 
+-GameTooltip:HookScript("OnTooltipSetItem", itemToolTipHook)
+-ShoppingTooltip1:HookScript("OnTooltipSetItem", itemToolTipHook)
+-ShoppingTooltip2:HookScript("OnTooltipSetItem", itemToolTipHook)
+-ItemRefTooltip:HookScript("OnTooltipSetItem", itemToolTipHook)
++hookItemTooltip(GameTooltip)
++hookItemTooltip(ShoppingTooltip1)
++hookItemTooltip(ShoppingTooltip2)
++hookItemTooltip(ItemRefTooltip)
+ 
+ local function CreateMouseAnchor()
+     TacoTipMouseAnchor = CreateFrame("Frame", nil, UIParent)

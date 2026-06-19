@@ -106,7 +106,7 @@
       "name": "Leatrix_Maps",
       "purpose": "Map improvements.",
       "directories": ["Leatrix_Maps"],
-      "sourceHints": ["CurseForge: Leatrix Maps"]
+      "sourceHints": ["Use a BCC/TBC package such as Leatrix_Maps-2.5.x-bcc; CurseForge Linux Alpha may mis-detect BCC Anniversary as Classic and install 1.15.x"]
     },
     {
       "name": "Masque",

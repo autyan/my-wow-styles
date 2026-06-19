@@ -2,8 +2,7 @@ profiles/local.json
 *.bak
 *.tmp
 __pycache__/
-build/dist/
-build/cache/
+build/
 vendor/
 snapshots/*
 !snapshots/README.md

@@ -24,7 +24,11 @@ Landed in source:
 
 - Details, Details_DataStorage, Details_EncounterDetails, Details_TinyThreat.
 - TomTom.
-- Leatrix Maps (`Leatrix_Maps-2.5.24-bcc`, TBC TOC interface 20505).
+- Leatrix Maps (`Leatrix_Maps-2.5.x-bcc`, TBC TOC interface 20505). CurseForge
+  Linux Alpha currently exposes the BCC Anniversary instance as `Classic`
+  rather than TBC/BCC Classic, so it may install the wrong `1.15.x` Classic Era
+  package. Do not use the `1.15.x` package for TBC Anniversary; it lacks
+  Outland/TBC map data and its startup guard rejects TBC clients.
 - TalentEmuX from `alexqu0822/TalentEmu` tag `260507`. The TBC TOC is
   `Interface: 20505`, version `205r.260507`.
 
@@ -38,6 +42,9 @@ Rejected after local testing:
   TalentEmuX.
 - Leatrix Maps `12.0.21`. That archive was the Retail build
   (`Interface: 120005, 120007`), not a TBC build.
+- Leatrix Maps `1.15.x`. That archive is the Classic Era build
+  (`Interface: 115xx`), not a TBC build. A TOC-only patch can make it load, but
+  it does not add the missing TBC map data.
 
 Avoid pulling BigFoot back in as a hard dependency unless the project explicitly
 switches to a BigFoot-compatible distribution mode.

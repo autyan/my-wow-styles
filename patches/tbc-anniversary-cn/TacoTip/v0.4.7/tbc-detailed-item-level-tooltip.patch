@@ -1,0 +1,15 @@
+--- a/main.lua
++++ b/main.lua
+@@ -394,6 +394,12 @@
+     if (itemLink and IsEquippableItem(itemLink)) then
+         if (TacoTipConfig.show_item_level) then
+             local ilvl = select(4, GetItemInfo(itemLink))
++            if (C_Item and C_Item.GetDetailedItemLevelInfo) then
++                local ok, detailedIlvl = pcall(C_Item.GetDetailedItemLevelInfo, itemLink)
++                if (ok and detailedIlvl and (not ilvl or detailedIlvl > ilvl)) then
++                    ilvl = detailedIlvl
++                end
++            end
+             if (ilvl and ilvl > 1) then
+                 self:AddLine(L["Item Level"].." "..ilvl, 1, 1, 1)
+             end

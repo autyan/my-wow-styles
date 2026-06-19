@@ -27,3 +27,7 @@ Current patch:
 - `tbc-anniversary-cn/ShadowedUnitFrames/v4.3.9-classic`: makes SUF's built-in
   Blizzard cast bar hiding skip nil frames and include `PlayerCastingBarFrame`
   on TBC Anniversary clients.
+- `tbc-anniversary-cn/TacoTip/v0.4.7`: makes item tooltips prefer
+  `C_Item.GetDetailedItemLevelInfo` over `GetItemInfo`'s base level so TBC
+  Anniversary equipment, especially jewelry and trinkets, shows the real item
+  level.

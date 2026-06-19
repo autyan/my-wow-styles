@@ -1,0 +1,8 @@
+{
+  "versionKey": "tbc-anniversary-cn",
+  "addon": "TacoTip",
+  "addonVersion": "0.4.7",
+  "directories": ["TacoTip"],
+  "reason": "Use detailed item level for item tooltips on TBC Anniversary clients.",
+  "patches": ["tbc-detailed-item-level-tooltip.patch"]
+}

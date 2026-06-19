@@ -3,6 +3,6 @@
   "addon": "TacoTip",
   "addonVersion": "0.4.7",
   "directories": ["TacoTip"],
-  "reason": "Use detailed item level and BigFoot-style tooltip setter hooks for item tooltips on TBC Anniversary clients.",
-  "patches": ["tbc-detailed-item-level-tooltip.patch"]
+  "reason": "Update the TOC Interface for TBC Anniversary clients without changing TacoTip tooltip behavior.",
+  "patches": ["tbc-anniversary-interface.patch"]
 }

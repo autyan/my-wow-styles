@@ -1,0 +1,10 @@
+diff --git a/Parrot/Parrot_Classic.toc b/Parrot/Parrot_Classic.toc
+index 6f2ef5d..2de4b11 100644
+--- a/Parrot/Parrot_Classic.toc
++++ b/Parrot/Parrot_Classic.toc
+@@ -1,4 +1,4 @@
+-## Interface: 11503, 20504, 30403, 40400
++## Interface: 11503, 20505, 30403, 40400
+ ## Title: Parrot 2
+ ## Notes: Floating Combat Text of awesomeness. Caw. It'll eat your crackers.
+ ## Notes-esES: Floating Combat Text of awesomeness. Caw. It'll eat your crackers.

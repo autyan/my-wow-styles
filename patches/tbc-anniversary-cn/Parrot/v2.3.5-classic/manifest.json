@@ -1,0 +1,7 @@
+{
+  "addon": "Parrot",
+  "version": "v2.3.5-classic",
+  "versionKey": "tbc-anniversary-cn",
+  "patches": ["tbc-anniversary-interface.patch"],
+  "reason": "Update Parrot 2's Classic TOC Interface value for TBC Anniversary clients."
+}

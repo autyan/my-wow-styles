@@ -22,11 +22,16 @@ patches/<version-key>/<AddonName>/<addon-version>/
   preferences.
 - Complete third-party addon source trees stay out of git.
 
-Current patch:
+Current patches:
 
 - `tbc-anniversary-cn/ShadowedUnitFrames/v4.3.9-classic`: makes SUF's built-in
   Blizzard cast bar hiding skip nil frames and include `PlayerCastingBarFrame`
   on TBC Anniversary clients.
+- `mop-classic-cn/ShadowedUnitFrames/v4.3.9-classic`: makes SUF's built-in
+  Blizzard cast bar hiding skip nil frames and include `PlayerCastingBarFrame`
+  on MoP Classic clients.
 - `tbc-anniversary-cn/TacoTip/v0.4.7`: updates the TOC `Interface` value to
   `20505` for TBC Anniversary clients without changing TacoTip tooltip
   behavior.
+- `tbc-anniversary-cn/Parrot/v2.3.5-classic`: updates the TOC `Interface`
+  value to `20505` for TBC Anniversary clients.

@@ -3,6 +3,6 @@
   "addon": "ShadowedUnitFrames",
   "addonVersion": "v4.3.9-classic",
   "directories": ["ShadowedUnitFrames", "ShadowedUF_Options"],
-  "reason": "Make SUF's built-in Blizzard cast bar hiding safe on TBC Anniversary clients.",
-  "patches": ["hide-blizzard-castbar.patch"]
+  "reason": "Keep SUF stable on TBC Anniversary while preserving upstream TOC metadata for external updates.",
+  "patches": ["hide-blizzard-castbar.patch", "debuff-color-api-compat.patch"]
 }

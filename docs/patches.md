@@ -25,8 +25,9 @@ patches/<version-key>/<AddonName>/<addon-version>/
 Current patches:
 
 - `tbc-anniversary-cn/ShadowedUnitFrames/v4.3.9-classic`: makes SUF's built-in
-  Blizzard cast bar hiding skip nil frames and include `PlayerCastingBarFrame`
-  on TBC Anniversary clients.
+  Blizzard cast bar hiding skip nil frames, includes `PlayerCastingBarFrame`,
+  and applies the debuff-color API fix from upstream PR #74 without changing
+  the official `20505` TOC metadata used by external addon updates.
 - `mop-classic-cn/ShadowedUnitFrames/v4.3.9-classic`: makes SUF's built-in
   Blizzard cast bar hiding skip nil frames and include `PlayerCastingBarFrame`
   on MoP Classic clients.

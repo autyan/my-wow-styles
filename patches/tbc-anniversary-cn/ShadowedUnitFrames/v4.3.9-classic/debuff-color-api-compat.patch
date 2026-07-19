@@ -1,0 +1,70 @@
+diff --git a/ExternalAPI.lua b/ExternalAPI.lua
+index 15ba7ad..75aa1c2 100644
+--- a/ExternalAPI.lua
++++ b/ExternalAPI.lua
+@@ -4,6 +4,26 @@
+ ShadowUF = select(2, ...)
+ ShadowUF.API = {}
+ 
++local fallbackDebuffColor = {r = 0.80, g = 0.00, b = 0.00}
++local debuffTypeColors = {
++	none = DEBUFF_TYPE_NONE_COLOR,
++	[""] = DEBUFF_TYPE_NONE_COLOR,
++	Magic = DEBUFF_TYPE_MAGIC_COLOR,
++	Curse = DEBUFF_TYPE_CURSE_COLOR,
++	Disease = DEBUFF_TYPE_DISEASE_COLOR,
++	Poison = DEBUFF_TYPE_POISON_COLOR,
++	Bleed = DEBUFF_TYPE_BLEED_COLOR,
++}
++
++function ShadowUF.API.GetDebuffTypeColor(debuffType)
++	local colors = DebuffTypeColor
++	if( colors ) then
++		return colors[debuffType] or colors.none or colors[""] or fallbackDebuffColor
++	end
++
++	return debuffTypeColors[debuffType] or debuffTypeColors.none or fallbackDebuffColor
++end
++
+ -- Threat colors
+ function ShadowUF.API.GetThreatStatusColor(state)
+ 	if( state == 3 ) then
+diff --git a/modules/auras.lua b/modules/auras.lua
+index 1f6c244..bee9fe3 100755
+--- a/modules/auras.lua
++++ b/modules/auras.lua
+@@ -559,7 +559,7 @@ local function renderAura(parent, frame, type, config, displayConfig, index, fil
+ 	if( isRemovable and not isFriendly and not ShadowUF.db.profile.auras.disableColor ) then
+ 		button.border:SetVertexColor(ShadowUF.db.profile.auraColors.removable.r, ShadowUF.db.profile.auraColors.removable.g, ShadowUF.db.profile.auraColors.removable.b)
+ 	elseif( ( not isFriendly or type == "debuffs" ) and not ShadowUF.db.profile.auras.disableColor ) then
+-		local color = auraType and DebuffTypeColor[auraType] or DebuffTypeColor.none
++		local color = ShadowUF.API.GetDebuffTypeColor(auraType)
+ 		button.border:SetVertexColor(color.r, color.g, color.b)
+ 	else
+ 		button.border:SetVertexColor(0.60, 0.60, 0.60)
+diff --git a/modules/health.lua b/modules/health.lua
+index 81c5ecf..154d051 100755
+--- a/modules/health.lua
++++ b/modules/health.lua
+@@ -90,7 +90,7 @@ function Health:UpdateColor(frame)
+ 		frame:SetBarColor("healthBar", ShadowUF.db.profile.healthColors.offline.r, ShadowUF.db.profile.healthColors.offline.g, ShadowUF.db.profile.healthColors.offline.b)
+ 		return
+ 	elseif( ShadowUF.db.profile.units[frame.unitType].healthBar.colorDispel and frame.healthBar.hasDebuff ) then
+-		color = DebuffTypeColor[frame.healthBar.hasDebuff]
++		color = ShadowUF.API.GetDebuffTypeColor(frame.healthBar.hasDebuff)
+ 	elseif( not UnitPlayerControlled(unit) and UnitIsTapDenied(unit) and UnitCanAttack("player", unit) ) then
+ 		color = ShadowUF.db.profile.healthColors.tapped
+ 	elseif( not UnitPlayerOrPetInRaid(unit) and not UnitPlayerOrPetInParty(unit) and ( ( ( reactionType == "player" or reactionType == "both" ) and UnitIsPlayer(unit) and not UnitIsFriend(unit, "player") ) or ( ( reactionType == "npc" or reactionType == "both" )  and not UnitIsPlayer(unit) ) ) ) then
+diff --git a/modules/highlight.lua b/modules/highlight.lua
+index 8011227..aac23d3 100755
+--- a/modules/highlight.lua
++++ b/modules/highlight.lua
+@@ -133,7 +133,7 @@ end
+ function Highlight:Update(frame)
+ 	local color
+ 	if( frame.highlight.hasDebuff ) then
+-		color = DebuffTypeColor[frame.highlight.hasDebuff] or DebuffTypeColor[""]
++		color = ShadowUF.API.GetDebuffTypeColor(frame.highlight.hasDebuff)
+ 	elseif( frame.highlight.hasThreat ) then
+ 		color = ShadowUF.db.profile.healthColors.hostile
+ 	elseif( frame.highlight.hasAttention ) then

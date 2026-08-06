@@ -1,7 +1,7 @@
 {
   "versionKey": "tbc-anniversary-cn",
   "displayName": "WoW China TBC Anniversary",
-  "interface": 20505,
+  "interface": 20506,
   "gameDirectoryName": "_anniversary_",
   "workspaceAddons": [
     {
@@ -137,6 +137,12 @@
       "purpose": "Scrolling combat text habit baseline.",
       "directories": ["Parrot"],
       "sourceHints": ["CurseForge: Parrot 2"]
+    },
+    {
+      "name": "Postal",
+      "purpose": "Mailbox workflow improvements, bulk collection, recipient history, and return handling.",
+      "directories": ["Postal"],
+      "sourceHints": ["CurseForge: Postal"]
     },
     {
       "name": "Questie",

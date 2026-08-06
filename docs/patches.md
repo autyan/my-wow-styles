@@ -24,6 +24,10 @@ patches/<version-key>/<AddonName>/<addon-version>/
 
 Current patches:
 
+- `tbc-anniversary-cn/Postal/v4.3.4`: updates Postal's TBC-specific TOC
+  `Interface` value to `20506`. Its loaded mail, container, item, friend, and
+  dropdown APIs were verified against the TBC Anniversary 2.5.6 runtime
+  snapshot, so no behavioral compatibility shim is included.
 - `tbc-anniversary-cn/ShadowedUnitFrames/v4.3.9-classic`: makes SUF's built-in
   Blizzard cast bar hiding skip nil frames, includes `PlayerCastingBarFrame`,
   and applies the debuff-color API fix from upstream PR #74 without changing

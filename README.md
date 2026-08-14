@@ -75,6 +75,7 @@ Build and sync the managed package to the local game AddOns directory with:
 
 ```bash
 bash scripts/sync-workspace-addons.sh tbc-anniversary-cn
+bash scripts/sync-workspace-addons.sh mop-classic-cn
 ```
 
 Precheck and sync a local third-party addon snapshot with:

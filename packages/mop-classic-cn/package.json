@@ -16,11 +16,12 @@
     },
     {
       "name": "Venari",
-      "enabled": false,
+      "enabled": true,
       "repoEnv": "VENARI_REPO",
       "repoPath": "../venari-wow-plugin",
       "remote": "git@github.com:autyan/venari-wow-plugin.git",
-      "reason": "Venari is hunter/TBC-oriented today; add a MoP build target in the Venari repo before enabling it here."
+      "build": ["scripts/build-release.sh", "mop-classic-cn"],
+      "artifact": "dist/release/mop-classic-cn/Venari"
     }
   ],
   "thirdPartyAddons": [

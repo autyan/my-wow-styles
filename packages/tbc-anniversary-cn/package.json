@@ -20,7 +20,7 @@
       "repoPath": "../venari-wow-plugin",
       "remote": "git@github.com:autyan/venari-wow-plugin.git",
       "build": ["scripts/build-release.sh", "tbc-anniversary-cn"],
-      "artifact": "dist/release/Venari"
+      "artifact": "dist/release/tbc-anniversary-cn/Venari"
     }
   ],
   "thirdPartyAddons": [
